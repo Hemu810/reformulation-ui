@@ -8,6 +8,8 @@ import StrategyPage from "./pages/StrategyPage";
 import ReferencesPage from "./pages/ReferencesPage";
 import "./App.css";
 
+const BASE = process.env.REACT_APP_API_URL || "";
+
 function App() {
   const [currentPage, setCurrentPage] = useState("discovery");
   const [selectedRoa, setSelectedRoa] = useState("");
@@ -26,7 +28,7 @@ function App() {
     setSelectedForm(form);
     try {
       const res = await fetch(
-        `/api/candidates?roa=${encodeURIComponent(roa)}&dosageForm=${encodeURIComponent(form)}`
+        `${BASE}/api/candidates?roa=${encodeURIComponent(roa)}&dosageForm=${encodeURIComponent(form)}`
       );
       const data = await res.json();
       setCandidates(data.candidates || []);
@@ -44,7 +46,7 @@ function App() {
   const handleSelectDrug = async (candidateId) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/drug/${candidateId}`);
+      const res = await fetch(`${BASE}/api/drug/${candidateId}`);
       const data = await res.json();
       setSelectedDrug(data);
       setStrategy(null);
@@ -61,7 +63,7 @@ function App() {
     if (!selectedDrug) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/strategy/${selectedDrug.candidate_id}`);
+      const res = await fetch(`${BASE}/api/strategy/${selectedDrug.candidate_id}`);
       const data = await res.json();
       setStrategy(data.strategy);
       setReferences(data.references || []);
@@ -75,10 +77,7 @@ function App() {
 
   const pages = {
     discovery: (
-      <DiscoveryPage
-        onFilter={handleFilter}
-        isLoading={isLoading}
-      />
+      <DiscoveryPage onFilter={handleFilter} isLoading={isLoading} />
     ),
     candidates: (
       <CandidatesPage
