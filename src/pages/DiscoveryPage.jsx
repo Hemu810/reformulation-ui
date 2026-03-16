@@ -7,7 +7,8 @@ export default function DiscoveryPage({ onFilter, isLoading }) {
   const [selectedForm, setSelectedForm] = useState("");
 
   useEffect(() => {
-    fetch("/api/options")
+    const BASE = process.env.REACT_APP_API_URL || "";
+    fetch(`${BASE}/api/options`)
       .then((r) => r.json())
       .then((d) => {
         setRoas(d.roaOptions || []);
