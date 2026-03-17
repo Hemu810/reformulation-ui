@@ -414,7 +414,7 @@ body {
 .strip-item:last-child { border-right: none; }
 
 .strip-label {
-  font-family: var(--font-mono);
+  font-family: "Segoe UI", Arial, sans-serif;
   font-size: 10px;
   letter-spacing: 0.8px;
   text-transform: uppercase;
