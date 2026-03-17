@@ -2,216 +2,207 @@ import React from "react";
 
 export default function DrugProfilePage({ drug, onGetStrategy, onBack, isLoading }) {
   if (!drug) return null;
-
   const ip = drug.ip_and_commercials || {};
-  const pathway = drug.regulatory_pathway || "";
-  const is505b2 = pathway.includes("505");
+  const is505b2 = (drug.regulatory_pathway || "").includes("505");
 
   return (
-    <div className="container">
-      <div className="back-row fade-up fade-up-1">
-        <button className="btn btn-ghost btn-sm" onClick={onBack}>
-          ← Back to Candidates
-        </button>
-        <div className="step-pill">Step 03</div>
-      </div>
-
-      <div className="page-header fade-up fade-up-1">
-        <div className="page-eyebrow">Commercial & IP Snapshot</div>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
+    <>
+      <div className="page-top-bar">
+        <div className="page-top-inner">
           <div>
-            <h1 className="page-title" style={{ fontSize: "clamp(24px, 3vw, 38px)" }}>
+            <div className="page-breadcrumb">
+              <span style={{ cursor: "pointer", color: "var(--green)" }} onClick={onBack}>Candidates</span>
+              <span className="breadcrumb-sep">/</span>
+              <span className="breadcrumb-active">{drug.brand_name}</span>
+            </div>
+            <h1 className="page-title">
               {drug.brand_name}
-              <span style={{ color: "var(--text-muted)", fontWeight: 400 }}> / </span>
-              <span style={{ color: "var(--text-secondary)" }}>{drug.generic_name}</span>
+              <span style={{ fontWeight: 400, color: "var(--text-muted)", fontStyle: "italic" }}> / {drug.generic_name}</span>
             </h1>
-            <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <span className={`pathway-badge ${is505b2 ? "pathway-505b2" : "pathway-anda"}`}>
-                {is505b2 ? "⚗️" : "📋"} {pathway}
-              </span>
-              <span className="badge badge-blue">{drug.indication_original}</span>
-            </div>
+            <div className="page-subtitle">{drug.indication_original} · {drug.route_of_administration_original}</div>
+          </div>
+          <div className="page-actions">
+            <button className="btn btn-secondary btn-sm" onClick={onBack}>← Back</button>
+            <span className={`pathway-badge ${is505b2 ? "pathway-505b2" : "pathway-anda"}`}>
+              {is505b2 ? "⚗️" : "📋"} {drug.regulatory_pathway}
+            </span>
+            <button
+              className="btn btn-primary"
+              onClick={onGetStrategy}
+              disabled={isLoading}
+            >
+              {isLoading ? <><div className="spinner" /> Generating…</> : "Generate Strategy →"}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Stats row */}
-      <div className="stat-grid fade-up fade-up-2" style={{ marginBottom: 24 }}>
-        <div className="stat-card">
-          <div className="stat-label">NDA Number</div>
-          <div className="nda-code" style={{ fontSize: 16, fontFamily: "var(--font-mono)", color: "var(--accent-amber)" }}>
-            {ip.nda_number || "—"}
+      <div className="container">
+        {/* KPI */}
+        <div className="kpi-grid fade-up delay-1">
+          <div className="kpi-card kpi-accent-amber">
+            <div className="kpi-label">NDA Number</div>
+            <div style={{ marginTop: 4 }}><span className="nda-code">{ip.nda_number || "—"}</span></div>
+            <div className="kpi-sub">Reference listed drug</div>
+          </div>
+          <div className="kpi-card kpi-accent-navy">
+            <div className="kpi-label">Patents on File</div>
+            <div className="kpi-value">{ip.patent_numbers?.length || 0}</div>
+            <div className="kpi-sub">{ip.patent_expiry_dates?.[0] ? `Expires ${ip.patent_expiry_dates[0]}` : "No expiry data"}</div>
+          </div>
+          <div className="kpi-card kpi-accent-blue">
+            <div className="kpi-label">ANDA Filers</div>
+            <div className="kpi-value">{ip.anda_filers?.length || 0}</div>
+            <div className="kpi-sub">{ip.anda_filers?.filter(a => a.first_to_file_flag).length || 0} first-to-file</div>
+          </div>
+          <div className="kpi-card kpi-accent-green">
+            <div className="kpi-label">Exclusivity</div>
+            <div className="kpi-value">{ip.exclusivity_codes?.length || 0}</div>
+            <div className="kpi-sub">{ip.exclusivity_codes?.join(", ") || "None recorded"}</div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-label">Patents on File</div>
-          <div className="stat-value">{ip.patent_numbers?.length || 0}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">ANDA Filers</div>
-          <div className="stat-value">{ip.anda_filers?.length || 0}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Exclusivity Codes</div>
-          <div className="stat-value">{ip.exclusivity_codes?.length || 0}</div>
-        </div>
-      </div>
 
-      <div className="profile-grid fade-up fade-up-3">
-        {/* Formulation Details */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Formulation Details</span>
-            <span style={{ fontSize: 18 }}>⚗️</span>
-          </div>
-          <div className="card-body">
-            <div className="info-list">
-              <div className="info-row">
-                <span className="info-key">Original ROA</span>
-                <span className="info-val">{drug.route_of_administration_original}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">Target ROA</span>
-                <span className="info-val" style={{ color: "var(--accent-secondary)" }}>
-                  {drug.route_of_administration_new || drug.route_of_administration_original}
-                </span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">Original Dosage Form</span>
-                <span className="info-val">{drug.dosage_form_original}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">Target Dosage Form</span>
-                <span className="info-val" style={{ color: "var(--accent-secondary)" }}>
-                  {drug.dosage_form_new || drug.dosage_form_original}
-                </span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">Indication</span>
-                <span className="info-val">{drug.indication_original}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">Regulatory Pathway</span>
-                <span className="info-val">
-                  <span className={`badge ${is505b2 ? "badge-blue" : "badge-yes"}`}>{pathway}</span>
-                </span>
+        <div className="profile-layout fade-up delay-2">
+          {/* Sidebar */}
+          <div className="profile-sidebar">
+            {/* Formulation */}
+            <div className="card">
+              <div className="card-header"><span className="card-title">Formulation</span><span>⚗️</span></div>
+              <div className="card-body-sm">
+                <div className="info-list">
+                  {[
+                    ["Indication", drug.indication_original],
+                    ["Pathway", drug.regulatory_pathway],
+                    ["Original ROA", drug.route_of_administration_original],
+                    ["Target ROA", drug.route_of_administration_new || "Unchanged"],
+                    ["Original Form", drug.dosage_form_original],
+                    ["Target Form", drug.dosage_form_new || "Unchanged"],
+                  ].map(([k, v]) => (
+                    <div className="info-row" key={k}>
+                      <span className="info-key">{k}</span>
+                      <span className="info-val">{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* IP & Exclusivity */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">IP & Exclusivity</span>
-            <span style={{ fontSize: 18 }}>🔒</span>
-          </div>
-          <div className="card-body">
-            <div className="info-list">
-              <div className="info-row">
-                <span className="info-key">NDA</span>
-                <span className="info-val">
-                  <span className="nda-code">{ip.nda_number || "—"}</span>
-                </span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">Patent Numbers</span>
-                <div className="info-val" style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
-                  {ip.patent_numbers?.length
-                    ? ip.patent_numbers.map((p) => (
-                        <span key={p} className="badge badge-violet">{p}</span>
-                      ))
-                    : <span style={{ color: "var(--text-muted)" }}>None</span>}
-                </div>
-              </div>
-              <div className="info-row">
-                <span className="info-key">Patent Expiry</span>
-                <div className="info-val" style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
-                  {ip.patent_expiry_dates?.length
-                    ? ip.patent_expiry_dates.map((d) => (
-                        <span key={d} className="badge badge-amber">{d}</span>
-                      ))
-                    : <span style={{ color: "var(--text-muted)" }}>—</span>}
-                </div>
-              </div>
-              <div className="info-row">
-                <span className="info-key">Exclusivity Codes</span>
-                <div className="info-val" style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
-                  {ip.exclusivity_codes?.length
-                    ? ip.exclusivity_codes.map((e) => (
-                        <span key={e} className="badge badge-blue">{e}</span>
-                      ))
-                    : <span style={{ color: "var(--text-muted)" }}>None</span>}
+            {/* IP */}
+            <div className="card">
+              <div className="card-header"><span className="card-title">IP &amp; Exclusivity</span><span>🔒</span></div>
+              <div className="card-body-sm">
+                <div className="info-list">
+                  <div className="info-row">
+                    <span className="info-key">NDA</span>
+                    <span className="info-val"><span className="nda-code">{ip.nda_number || "—"}</span></span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-key">Patents</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
+                      {ip.patent_numbers?.length
+                        ? ip.patent_numbers.map(p => <span key={p} className="badge badge-violet">{p}</span>)
+                        : <span className="info-val">None</span>}
+                    </div>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-key">Expiry</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
+                      {ip.patent_expiry_dates?.length
+                        ? ip.patent_expiry_dates.map(d => <span key={d} className="badge badge-amber">{d}</span>)
+                        : <span className="info-val">—</span>}
+                    </div>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-key">Excl. Codes</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
+                      {ip.exclusivity_codes?.length
+                        ? ip.exclusivity_codes.map(e => <span key={e} className="badge badge-blue">{e}</span>)
+                        : <span className="info-val">None</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ANDA Filers / Litigation */}
-        <div className="card profile-full">
-          <div className="card-header">
-            <span className="card-title">ANDA Filers & Litigation</span>
-            <span style={{ fontSize: 18 }}>⚖️</span>
-          </div>
-          <div className="card-body">
-            {ip.anda_filers?.length ? (
-              <div className="data-table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Company</th>
-                      <th>First-to-File</th>
-                      <th>Litigation Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ip.anda_filers.map((a, idx) => (
-                      <tr key={idx}>
-                        <td className="td-primary">{a.company_name}</td>
-                        <td>
-                          <span className={`badge ${a.first_to_file_flag ? "badge-yes" : "badge-no"}`}>
-                            {a.first_to_file_flag ? "FTF" : "Non-FTF"}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`badge ${a.litigation_status?.toLowerCase().includes("paragraph iv") ? "badge-rose" : "badge-no"}`}>
-                            {a.litigation_status}
-                          </span>
-                        </td>
+          {/* Main */}
+          <div className="profile-main">
+            {/* ANDA & Litigation */}
+            <div className="card">
+              <div className="card-header">
+                <span className="card-title">ANDA Filers &amp; Litigation</span>
+                <span className="badge badge-red">{ip.anda_filers?.filter(a => a.litigation_status?.toLowerCase().includes("iv")).length || 0} Para IV</span>
+              </div>
+              {ip.anda_filers?.length ? (
+                <div className="data-table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Company</th>
+                        <th>Status</th>
+                        <th>Litigation</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {ip.anda_filers.map((a, i) => (
+                        <tr key={i}>
+                          <td className="td-primary">{a.company_name}</td>
+                          <td>
+                            <span className={`badge ${a.first_to_file_flag ? "badge-yes" : "badge-no"}`}>
+                              {a.first_to_file_flag ? "First-to-File" : "Non-FTF"}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge ${a.litigation_status?.toLowerCase().includes("paragraph iv") ? "badge-red" : "badge-no"}`}>
+                              {a.litigation_status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty-state" style={{ padding: "32px" }}>
+                  <div className="empty-icon">📭</div>
+                  <div className="empty-title">No ANDA Filers</div>
+                  <div className="empty-desc">No ANDA submissions on record — potentially a clean runway opportunity.</div>
+                </div>
+              )}
+            </div>
+
+            {/* Market context */}
+            <div className="card">
+              <div className="card-header"><span className="card-title">Market &amp; Commercial Context</span><span>📊</span></div>
+              <div className="card-body">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+                  {[
+                    { label: "Market Horizon", value: "2015–2032", sub: "Historical + forecast" },
+                    { label: "Sales Data", value: "US$", sub: "USD annual revenue" },
+                    { label: "Indication Class", value: drug.indication_original, sub: "Primary therapeutic area" },
+                  ].map((m) => (
+                    <div key={m.label} style={{
+                      padding: "14px", background: "var(--bg-surface)",
+                      border: "1px solid var(--slate-line)", borderRadius: "var(--radius-sm)"
+                    }}>
+                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 6 }}>{m.label}</div>
+                      <div style={{ fontFamily: "var(--font-serif)", fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>{m.value}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{m.sub}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div className="empty-state" style={{ padding: "32px 24px" }}>
-                <div className="empty-icon">📭</div>
-                <div className="empty-title">No ANDA filers recorded</div>
-                <div className="empty-desc">This molecule currently has no ANDA submissions on record — potentially a clean runway.</div>
-              </div>
-            )}
+            </div>
+
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <button className="btn btn-primary btn-lg" onClick={onGetStrategy} disabled={isLoading}>
+                {isLoading ? <><div className="spinner" /> Generating Strategy…</> : "Generate AI Strategy & Recommendations →"}
+              </button>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>AI-powered bridging study plan · FDA-aligned</span>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* CTA */}
-      <div className="fade-up fade-up-4" style={{ marginTop: 28, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <button
-          className="btn btn-primary btn-lg"
-          onClick={onGetStrategy}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <><div className="spinner" /> Generating strategy…</>
-          ) : (
-            <>Generate Strategy & Recommendations →</>
-          )}
-        </button>
-        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          AI-powered bridging study recommendations based on FDA guidance
-        </p>
-      </div>
-    </div>
+    </>
   );
 }

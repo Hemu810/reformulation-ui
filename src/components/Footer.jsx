@@ -5,17 +5,18 @@ export default function Footer() {
     <footer className="site-footer">
       <div className="footer-inner">
         <div className="footer-left">
-          <div className="footer-logo">Reform<span>AI</span> — US Reformulation & ANDA Engine</div>
-          <div className="footer-copy">© 2025 ReformAI Inc. For research use only. Not legal or regulatory advice.</div>
+          <div className="footer-logo">Reform<span>AI</span> — US Reformulation &amp; ANDA Intelligence</div>
+          <div className="footer-copy">© 2025 ReformAI Inc. · For research use only · Not legal or regulatory advice · 21 CFR Part 314</div>
         </div>
         <div className="footer-links">
           <button className="footer-link">Documentation</button>
           <button className="footer-link">FDA Guidance</button>
+          <button className="footer-link">Orange Book</button>
           <button className="footer-link">Disclaimer</button>
           <button className="footer-link">Privacy</button>
         </div>
         <div className="footer-right">
-          <div className="footer-dot"></div>
+          <div className="footer-dot" />
           All systems operational
         </div>
       </div>

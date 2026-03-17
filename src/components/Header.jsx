@@ -6,12 +6,12 @@ export default function Header({ currentPage, steps, navigate, selectedDrug, str
   const currentIndex = STEP_ORDER.indexOf(currentPage);
 
   const isAccessible = (stepId) => {
-    const stepIndex = STEP_ORDER.indexOf(stepId);
-    if (stepIndex === 0) return true;
-    if (stepIndex === 1) return true; // always accessible once visited
-    if (stepId === "drug" && selectedDrug) return true;
-    if (stepId === "strategy" && strategy) return true;
-    if (stepId === "references" && strategy) return true;
+    const i = STEP_ORDER.indexOf(stepId);
+    if (i === 0) return true;
+    if (i === 1) return currentIndex >= 1;
+    if (stepId === "drug") return !!selectedDrug;
+    if (stepId === "strategy") return !!strategy;
+    if (stepId === "references") return !!strategy;
     return false;
   };
 
@@ -31,26 +31,28 @@ export default function Header({ currentPage, steps, navigate, selectedDrug, str
 
             return (
               <React.Fragment key={step.id}>
-                {idx > 0 && <span className="nav-chevron">›</span>}
-                <div className="nav-step">
-                  <button
-                    className={`nav-step-btn ${isActive ? "active" : ""} ${isDone ? "done" : ""} ${accessible ? "accessible" : ""}`}
-                    onClick={() => accessible && navigate(step.id)}
-                    disabled={!accessible}
-                  >
-                    <span className="nav-step-num">
-                      {isDone ? "✓" : idx + 1}
-                    </span>
-                    {step.label}
-                  </button>
-                </div>
+                {idx > 0 && <div className="nav-divider" />}
+                <button
+                  className={`nav-step-btn ${isActive ? "active" : ""} ${isDone ? "done" : ""} ${accessible ? "accessible" : ""}`}
+                  onClick={() => accessible && navigate(step.id)}
+                  disabled={!accessible}
+                >
+                  <span className="nav-step-num">
+                    {isDone ? "✓" : idx + 1}
+                  </span>
+                  {step.label}
+                </button>
               </React.Fragment>
             );
           })}
         </nav>
 
         <div className="header-actions">
-          <span className="header-badge">Beta v0.9</span>
+          <div className="header-live">
+            <div className="live-dot" />
+            LIVE
+          </div>
+          <span className="header-badge">FDA 2025</span>
         </div>
       </div>
     </header>

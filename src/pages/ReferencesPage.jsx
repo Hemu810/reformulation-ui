@@ -1,11 +1,11 @@
 import React from "react";
 
-const CATEGORY_META = {
-  Clinical: { icon: "🧬", badge: "badge-yes" },
-  Regulatory: { icon: "📋", badge: "badge-blue" },
-  Preclinical: { icon: "⚗️", badge: "badge-violet" },
-  Commercial: { icon: "📊", badge: "badge-amber" },
-  Default: { icon: "📄", badge: "badge-no" },
+const CAT_META = {
+  Clinical:     { icon: "🧬", badge: "badge-yes",    color: "var(--green)" },
+  Regulatory:   { icon: "📋", badge: "badge-blue",   color: "var(--blue)" },
+  Preclinical:  { icon: "⚗️",  badge: "badge-violet", color: "var(--violet)" },
+  Commercial:   { icon: "📊", badge: "badge-amber",  color: "var(--amber)" },
+  Default:      { icon: "📄", badge: "badge-no",     color: "var(--slate-mid)" },
 };
 
 export default function ReferencesPage({ references, drug, onBack }) {
@@ -19,97 +19,102 @@ export default function ReferencesPage({ references, drug, onBack }) {
   const categories = Object.keys(grouped);
 
   return (
-    <div className="container">
-      <div className="back-row fade-up fade-up-1">
-        <button className="btn btn-ghost btn-sm" onClick={onBack}>
-          ← Back to Strategy
-        </button>
-        <div className="step-pill">Step 05</div>
+    <>
+      <div className="page-top-bar">
+        <div className="page-top-inner">
+          <div>
+            <div className="page-breadcrumb">
+              <span style={{ cursor: "pointer", color: "var(--green)" }} onClick={onBack}>Strategy</span>
+              <span className="breadcrumb-sep">/</span>
+              <span className="breadcrumb-active">Evidence</span>
+            </div>
+            <h1 className="page-title">
+              Evidence &amp; References
+              {drug && <span style={{ fontWeight: 400, color: "var(--text-muted)", fontStyle: "italic" }}> — {drug.generic_name}</span>}
+            </h1>
+            <div className="page-subtitle">Supporting literature · FDA guidances · Regulatory databases</div>
+          </div>
+          <div className="page-actions">
+            <button className="btn btn-secondary btn-sm" onClick={onBack}>← Strategy</button>
+            <span className="badge badge-navy">{references.length} source{references.length !== 1 ? "s" : ""}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="page-header fade-up fade-up-1">
-        <div className="page-eyebrow">Evidence & References</div>
-        <h1 className="page-title" style={{ fontSize: "clamp(22px, 3vw, 36px)" }}>
-          Supporting <span className="highlight">evidence base</span>
-          {drug && <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}> — {drug.generic_name}</span>}
-        </h1>
-        <p className="page-desc">
-          Peer-reviewed publications, FDA guidance documents, and regulatory databases underpinning the recommended strategy.
-        </p>
-      </div>
-
-      {/* Summary bar */}
-      <div className="fade-up fade-up-2" style={{ display: "flex", gap: 16, marginBottom: 28, flexWrap: "wrap" }}>
-        <div style={{ padding: "10px 16px", background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", display: "flex", gap: 20 }}>
-          {categories.map((cat) => {
-            const meta = CATEGORY_META[cat] || CATEGORY_META.Default;
+      <div className="container">
+        {/* KPI row */}
+        <div className="kpi-grid fade-up delay-1">
+          <div className="kpi-card kpi-accent-green">
+            <div className="kpi-label">Total Sources</div>
+            <div className="kpi-value">{references.length}</div>
+            <div className="kpi-sub">Across all categories</div>
+          </div>
+          {categories.map((cat, i) => {
+            const meta = CAT_META[cat] || CAT_META.Default;
+            const accents = ["kpi-accent-blue", "kpi-accent-amber", "kpi-accent-navy"];
             return (
-              <div key={cat} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span>{meta.icon}</span>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                  <strong style={{ color: "var(--text-primary)" }}>{grouped[cat].length}</strong> {cat}
-                </span>
+              <div key={cat} className={`kpi-card ${accents[i % accents.length]}`}>
+                <div className="kpi-label">{cat}</div>
+                <div className="kpi-value">{grouped[cat].length}</div>
+                <div className="kpi-sub">{meta.icon} {cat} references</div>
               </div>
             );
           })}
         </div>
-      </div>
 
-      {references.length === 0 ? (
-        <div className="card fade-up fade-up-3">
-          <div className="empty-state">
-            <div className="empty-icon">📚</div>
-            <div className="empty-title">No references available</div>
-            <div className="empty-desc">References will appear here once a strategy is generated.</div>
+        {references.length === 0 ? (
+          <div className="card fade-up delay-2">
+            <div className="empty-state">
+              <div className="empty-icon">📚</div>
+              <div className="empty-title">No references available</div>
+              <div className="empty-desc">References appear after a strategy is generated.</div>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-          {categories.map((cat, catIdx) => {
-            const meta = CATEGORY_META[cat] || CATEGORY_META.Default;
-            return (
-              <div key={cat} className={`fade-up fade-up-${Math.min(catIdx + 3, 5)}`}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 16 }}>{meta.icon}</span>
-                  <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    {cat}
-                  </span>
-                  <span className={`badge ${meta.badge}`}>{grouped[cat].length}</span>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {grouped[cat].map((ref, idx) => (
-                    <div key={idx} className="ref-card">
-                      <div className="ref-icon">{meta.icon}</div>
-                      <div className="ref-content">
-                        <div className="ref-category">{ref.category}</div>
-                        <div className="ref-desc">{ref.description}</div>
-                        <div className="ref-source">Source: {ref.source}</div>
-                      </div>
-                      <div style={{ flexShrink: 0 }}>
-                        <span className={`badge ${meta.badge}`}>{ref.source}</span>
-                      </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {categories.map((cat, catIdx) => {
+              const meta = CAT_META[cat] || CAT_META.Default;
+              return (
+                <div key={cat} className={`fade-up delay-${Math.min(catIdx + 2, 5)}`}>
+                  <div className="section-header">
+                    <div className="section-title" style={{ "--section-color": meta.color }}>
+                      {meta.icon} {cat} References
                     </div>
-                  ))}
+                    <span className={`badge ${meta.badge}`}>{grouped[cat].length}</span>
+                  </div>
+                  <div className="card">
+                    {grouped[cat].map((ref, idx) => (
+                      <div key={idx} className="ref-card">
+                        <div className="ref-icon" style={{ background: `${meta.color}15`, borderColor: `${meta.color}30` }}>
+                          {meta.icon}
+                        </div>
+                        <div className="ref-content">
+                          <div className="ref-category" style={{ color: meta.color }}>{ref.category}</div>
+                          <div className="ref-desc">{ref.description}</div>
+                          <div className="ref-source">Source: {ref.source}</div>
+                        </div>
+                        <div style={{ flexShrink: 0 }}>
+                          <span className={`badge ${meta.badge}`}>{ref.source}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Disclaimer */}
-      <div className="fade-up fade-up-5" style={{ marginTop: 40, padding: "16px 20px", background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: "var(--radius-md)", display: "flex", gap: 12 }}>
-        <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
-        <div>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, color: "var(--accent-amber)", marginBottom: 4 }}>
-            Disclaimer
+              );
+            })}
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
-            This information is generated for research and informational purposes only. It does not constitute legal, regulatory, or medical advice. Always consult qualified professionals and review primary source materials before making any regulatory or business decisions.
+        )}
+
+        <div className="disclaimer fade-up delay-5">
+          <span className="disclaimer-icon">⚠️</span>
+          <div>
+            <div className="disclaimer-title">Research Use Only — Not Regulatory or Legal Advice</div>
+            <div className="disclaimer-text">
+              All information is generated for research and informational purposes only under 21 CFR Part 314. It does not constitute legal, regulatory, or medical advice. Always consult qualified regulatory affairs professionals and review primary source materials before making any submission or business decisions. ReformAI makes no warranties as to accuracy or completeness.
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
