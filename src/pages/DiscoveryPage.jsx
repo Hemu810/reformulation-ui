@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import StepBar from "../components/StepBar";
 
 const BASE = process.env.REACT_APP_API_URL || "";
 
@@ -10,7 +11,7 @@ const ANALYTICS = [
   { label: "Rare Disease", value: "412", change: "+5", dir: "up" },
 ];
 
-export default function DiscoveryPage({ onFilter, isLoading }) {
+export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
   const [roas, setRoas] = useState([]);
   const [dosageForms, setDosageForms] = useState([]);
   const [selectedRoa, setSelectedRoa] = useState("");
@@ -68,7 +69,10 @@ export default function DiscoveryPage({ onFilter, isLoading }) {
         </div>
       </div>
 
-      <div className="container">
+      {/* Step tracker */}
+      <StepBar {...stepProps} />
+
+      <div className="container" style={{ paddingTop: 28 }}>
         {/* KPI row */}
         <div className="kpi-grid fade-up delay-1">
           <div className="kpi-card kpi-accent-green">
@@ -95,7 +99,6 @@ export default function DiscoveryPage({ onFilter, isLoading }) {
 
         {/* Main layout */}
         <div className="discovery-layout fade-up delay-2">
-          {/* Left copy */}
           <div className="discovery-copy">
             <div className="discovery-eyebrow">Step 01 — Opportunity Discovery</div>
             <h2 className="discovery-heading">
@@ -104,7 +107,6 @@ export default function DiscoveryPage({ onFilter, isLoading }) {
             <p className="discovery-desc">
               Screen the full US pharmaceutical landscape for high-value 505(b)(2) reformulation and ANDA first-to-file opportunities. Filter by delivery route and target dosage form to surface scored candidates with full IP and litigation intelligence.
             </p>
-
             <div className="discovery-stats">
               <div>
                 <div className="d-stat-value">98.4%</div>
@@ -121,7 +123,6 @@ export default function DiscoveryPage({ onFilter, isLoading }) {
             </div>
           </div>
 
-          {/* Filter panel */}
           <div className="filter-panel fade-up delay-3">
             <div className="filter-panel-header">
               <div className="filter-panel-title">Configure Search Parameters</div>
@@ -132,22 +133,14 @@ export default function DiscoveryPage({ onFilter, isLoading }) {
                 <div className="filter-row">
                   <div className="form-field">
                     <label className="form-label">Route of Administration</label>
-                    <select
-                      className="form-select"
-                      value={selectedRoa}
-                      onChange={(e) => setSelectedRoa(e.target.value)}
-                    >
+                    <select className="form-select" value={selectedRoa} onChange={(e) => setSelectedRoa(e.target.value)}>
                       <option value="">Select ROA</option>
                       {roas.map((r) => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
                   <div className="form-field">
                     <label className="form-label">Target Dosage Form</label>
-                    <select
-                      className="form-select"
-                      value={selectedForm}
-                      onChange={(e) => setSelectedForm(e.target.value)}
-                    >
+                    <select className="form-select" value={selectedForm} onChange={(e) => setSelectedForm(e.target.value)}>
                       <option value="">Select dosage form</option>
                       {dosageForms.map((f) => <option key={f} value={f}>{f}</option>)}
                     </select>
@@ -172,10 +165,7 @@ export default function DiscoveryPage({ onFilter, isLoading }) {
                   disabled={!selectedRoa || !selectedForm || isLoading}
                   style={{ width: "100%" }}
                 >
-                  {isLoading
-                    ? <><div className="spinner" />Scanning molecule library…</>
-                    : <>Screen Molecules →</>
-                  }
+                  {isLoading ? <><div className="spinner" />Scanning molecule library…</> : <>Screen Molecules →</>}
                 </button>
               </form>
 
@@ -189,8 +179,7 @@ export default function DiscoveryPage({ onFilter, isLoading }) {
                 ].map((f) => (
                   <div key={f.label} style={{
                     padding: "12px", background: "var(--bg-surface)",
-                    border: "1px solid var(--slate-line)", borderRadius: "var(--radius-sm)",
-                    textAlign: "center"
+                    border: "1px solid var(--slate-line)", borderRadius: "var(--radius-sm)", textAlign: "center"
                   }}>
                     <div style={{ fontSize: 20, marginBottom: 4 }}>{f.icon}</div>
                     <div style={{ fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 11.5, color: "var(--text-primary)", marginBottom: 2 }}>{f.label}</div>

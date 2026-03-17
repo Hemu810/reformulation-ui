@@ -1,13 +1,13 @@
 import React from "react";
+import StepBar from "../components/StepBar";
 
-export default function CandidatesPage({ candidates, selectedRoa, selectedForm, onSelectDrug, onBack, isLoading }) {
+export default function CandidatesPage({ candidates, selectedRoa, selectedForm, onSelectDrug, onBack, isLoading, stepProps }) {
   const sorted = [...candidates].sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
-  const count505 = candidates.filter(c => c.opportunity_flags?.["505b2_reformulation_candidate"]).length;
-  const countFTF = candidates.filter(c => c.opportunity_flags?.["anda_first_to_file_candidate"]).length;
+  const count505  = candidates.filter(c => c.opportunity_flags?.["505b2_reformulation_candidate"]).length;
+  const countFTF  = candidates.filter(c => c.opportunity_flags?.["anda_first_to_file_candidate"]).length;
   const countRare = candidates.filter(c => c.opportunity_flags?.rare_disease_focus).length;
-  const avgScore = candidates.length
-    ? Math.round(candidates.reduce((s, c) => s + (c.opportunity_score || 0), 0) / candidates.length)
-    : 0;
+  const avgScore  = candidates.length
+    ? Math.round(candidates.reduce((s, c) => s + (c.opportunity_score || 0), 0) / candidates.length) : 0;
 
   return (
     <>
@@ -33,8 +33,9 @@ export default function CandidatesPage({ candidates, selectedRoa, selectedForm, 
         </div>
       </div>
 
-      <div className="container">
-        {/* KPI row */}
+      <StepBar {...stepProps} />
+
+      <div className="container" style={{ paddingTop: 28 }}>
         <div className="kpi-grid fade-up delay-1">
           <div className="kpi-card kpi-accent-green">
             <div className="kpi-label">Total Results</div>
@@ -58,7 +59,6 @@ export default function CandidatesPage({ candidates, selectedRoa, selectedForm, 
           </div>
         </div>
 
-        {/* Table */}
         <div className="card fade-up delay-2">
           <div className="card-header">
             <span className="card-title">Molecule Shortlist</span>
@@ -102,37 +102,19 @@ export default function CandidatesPage({ candidates, selectedRoa, selectedForm, 
                       <td className="td-muted">{c.brand_name}</td>
                       <td><span className="badge badge-no">{c.route_of_administration}</span></td>
                       <td><span className="badge badge-no">{c.dosage_form}</span></td>
-                      <td>
-                        <span className={`badge ${c.opportunity_flags?.["505b2_reformulation_candidate"] ? "badge-yes" : "badge-no"}`}>
-                          {c.opportunity_flags?.["505b2_reformulation_candidate"] ? "Yes" : "No"}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge ${c.opportunity_flags?.["anda_first_to_file_candidate"] ? "badge-blue" : "badge-no"}`}>
-                          {c.opportunity_flags?.["anda_first_to_file_candidate"] ? "Yes" : "No"}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge ${c.opportunity_flags?.rare_disease_focus ? "badge-amber" : "badge-no"}`}>
-                          {c.opportunity_flags?.rare_disease_focus ? "Yes" : "No"}
-                        </span>
-                      </td>
+                      <td><span className={`badge ${c.opportunity_flags?.["505b2_reformulation_candidate"] ? "badge-yes" : "badge-no"}`}>{c.opportunity_flags?.["505b2_reformulation_candidate"] ? "Yes" : "No"}</span></td>
+                      <td><span className={`badge ${c.opportunity_flags?.["anda_first_to_file_candidate"] ? "badge-blue" : "badge-no"}`}>{c.opportunity_flags?.["anda_first_to_file_candidate"] ? "Yes" : "No"}</span></td>
+                      <td><span className={`badge ${c.opportunity_flags?.rare_disease_focus ? "badge-amber" : "badge-no"}`}>{c.opportunity_flags?.rare_disease_focus ? "Yes" : "No"}</span></td>
                       <td>
                         {c.opportunity_score ? (
                           <div className="score-chip">
-                            <div className="score-bar">
-                              <div className="score-fill" style={{ width: `${c.opportunity_score}%` }} />
-                            </div>
+                            <div className="score-bar"><div className="score-fill" style={{ width: `${c.opportunity_score}%` }} /></div>
                             <span className="score-num">{c.opportunity_score}</span>
                           </div>
                         ) : <span className="td-muted">—</span>}
                       </td>
                       <td>
-                        <button
-                          className="btn btn-navy btn-sm"
-                          onClick={() => onSelectDrug(c.candidate_id)}
-                          disabled={isLoading}
-                        >
+                        <button className="btn btn-navy btn-sm" onClick={() => onSelectDrug(c.candidate_id)} disabled={isLoading}>
                           {isLoading ? <div className="spinner" style={{ width: 10, height: 10 }} /> : "Profile →"}
                         </button>
                       </td>

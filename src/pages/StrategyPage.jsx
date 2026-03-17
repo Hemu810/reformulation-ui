@@ -1,4 +1,5 @@
 import React from "react";
+import StepBar from "../components/StepBar";
 
 const ITEMS = [
   { key: "scientific",  label: "Scientific Rationale", icon: "🔬", accent: "var(--blue)" },
@@ -8,7 +9,7 @@ const ITEMS = [
   { key: "regulatory",  label: "Regulatory & IP",      icon: "⚖️", accent: "var(--red)" },
 ];
 
-export default function StrategyPage({ strategy, drug, onViewReferences, onBack }) {
+export default function StrategyPage({ strategy, drug, onViewReferences, onBack, stepProps }) {
   if (!strategy) return null;
 
   return (
@@ -34,8 +35,9 @@ export default function StrategyPage({ strategy, drug, onViewReferences, onBack 
         </div>
       </div>
 
-      <div className="container">
-        {/* Summary banner */}
+      <StepBar {...stepProps} />
+
+      <div className="container" style={{ paddingTop: 28 }}>
         <div className="summary-banner fade-up delay-1">
           <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
             <div style={{ fontSize: 28, flexShrink: 0 }}>🎯</div>
@@ -46,7 +48,6 @@ export default function StrategyPage({ strategy, drug, onViewReferences, onBack 
           </div>
         </div>
 
-        {/* Strategy rationale */}
         <div className="section-header fade-up delay-2">
           <div className="section-title">Strategic Rationale</div>
           <span className="badge badge-navy">{ITEMS.filter(i => strategy[i.key]).length} dimensions</span>
@@ -66,7 +67,6 @@ export default function StrategyPage({ strategy, drug, onViewReferences, onBack 
           })}
         </div>
 
-        {/* Bridging studies */}
         {strategy.bridging_studies?.length > 0 && (
           <div className="card fade-up delay-3" style={{ marginBottom: 24 }}>
             <div className="card-header">
@@ -74,33 +74,27 @@ export default function StrategyPage({ strategy, drug, onViewReferences, onBack 
               <span className="badge badge-blue">{strategy.bridging_studies.length} required</span>
             </div>
             <div className="card-body">
-              <div className="section-header" style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-                  Studies required to support the 505(b)(2) application based on FDA guidance for the target formulation type.
-                </div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 12 }}>
+                Studies required to support the 505(b)(2) application based on FDA guidance for the target formulation type.
               </div>
               <div className="study-tags-wrap">
                 {strategy.bridging_studies.map((s, i) => (
-                  <div key={i} className="study-tag">
-                    <div className="study-tag-dot" />
-                    {s}
-                  </div>
+                  <div key={i} className="study-tag"><div className="study-tag-dot" />{s}</div>
                 ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* Timeline estimate */}
         <div className="card fade-up delay-4" style={{ marginBottom: 24 }}>
           <div className="card-header"><span className="card-title">Development Timeline Estimate</span><span>📅</span></div>
           <div className="card-body">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px,1fr))", gap: 1, background: "var(--slate-line)", border: "1px solid var(--slate-line)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
               {[
-                { phase: "Pre-formulation", duration: "3–6 mo", color: "var(--blue)" },
+                { phase: "Pre-formulation", duration: "3–6 mo",   color: "var(--blue)" },
                 { phase: "Bridging Studies", duration: "6–12 mo", color: "var(--green)" },
-                { phase: "NDA Filing", duration: "3–6 mo", color: "var(--amber)" },
-                { phase: "FDA Review", duration: "10–12 mo", color: "var(--navy)" },
+                { phase: "NDA Filing",       duration: "3–6 mo",  color: "var(--amber)" },
+                { phase: "FDA Review",       duration: "10–12 mo",color: "var(--navy)" },
               ].map((t) => (
                 <div key={t.phase} style={{ background: "var(--bg-white)", padding: "14px 16px", borderTop: `3px solid ${t.color}` }}>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 5 }}>{t.phase}</div>

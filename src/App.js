@@ -22,6 +22,8 @@ function App() {
 
   const navigate = (page) => setCurrentPage(page);
 
+  const stepProps = { currentPage, navigate, selectedDrug, strategy };
+
   const handleFilter = async (roa, form) => {
     setIsLoading(true);
     setSelectedRoa(roa);
@@ -36,11 +38,8 @@ function App() {
       setStrategy(null);
       setReferences([]);
       navigate("candidates");
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setIsLoading(false); }
   };
 
   const handleSelectDrug = async (candidateId) => {
@@ -52,11 +51,8 @@ function App() {
       setStrategy(null);
       setReferences([]);
       navigate("drug");
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setIsLoading(false); }
   };
 
   const handleGetStrategy = async () => {
@@ -68,16 +64,13 @@ function App() {
       setStrategy(data.strategy);
       setReferences(data.references || []);
       navigate("strategy");
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setIsLoading(false); }
   };
 
   const pages = {
     discovery: (
-      <DiscoveryPage onFilter={handleFilter} isLoading={isLoading} />
+      <DiscoveryPage onFilter={handleFilter} isLoading={isLoading} stepProps={stepProps} />
     ),
     candidates: (
       <CandidatesPage
@@ -87,6 +80,7 @@ function App() {
         onSelectDrug={handleSelectDrug}
         onBack={() => navigate("discovery")}
         isLoading={isLoading}
+        stepProps={stepProps}
       />
     ),
     drug: (
@@ -95,6 +89,7 @@ function App() {
         onGetStrategy={handleGetStrategy}
         onBack={() => navigate("candidates")}
         isLoading={isLoading}
+        stepProps={stepProps}
       />
     ),
     strategy: (
@@ -103,6 +98,7 @@ function App() {
         drug={selectedDrug}
         onViewReferences={() => navigate("references")}
         onBack={() => navigate("drug")}
+        stepProps={stepProps}
       />
     ),
     references: (
@@ -110,27 +106,14 @@ function App() {
         references={references}
         drug={selectedDrug}
         onBack={() => navigate("strategy")}
+        stepProps={stepProps}
       />
     ),
   };
 
-  const steps = [
-    { id: "discovery", label: "Discovery" },
-    { id: "candidates", label: "Candidates" },
-    { id: "drug", label: "Drug Profile" },
-    { id: "strategy", label: "Strategy" },
-    { id: "references", label: "Evidence" },
-  ];
-
   return (
     <div className="app-shell">
-      <Header
-        currentPage={currentPage}
-        steps={steps}
-        navigate={navigate}
-        selectedDrug={selectedDrug}
-        strategy={strategy}
-      />
+      <Header navigate={navigate} />
       <main className="main-content">
         {pages[currentPage]}
       </main>

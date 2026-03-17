@@ -1,21 +1,21 @@
 import React from "react";
+import StepBar from "../components/StepBar";
 
 const CAT_META = {
-  Clinical:     { icon: "🧬", badge: "badge-yes",    color: "var(--green)" },
-  Regulatory:   { icon: "📋", badge: "badge-blue",   color: "var(--blue)" },
-  Preclinical:  { icon: "⚗️",  badge: "badge-violet", color: "var(--violet)" },
-  Commercial:   { icon: "📊", badge: "badge-amber",  color: "var(--amber)" },
-  Default:      { icon: "📄", badge: "badge-no",     color: "var(--slate-mid)" },
+  Clinical:    { icon: "🧬", badge: "badge-yes",    color: "var(--green)" },
+  Regulatory:  { icon: "📋", badge: "badge-blue",   color: "var(--blue)" },
+  Preclinical: { icon: "⚗️",  badge: "badge-violet", color: "var(--violet)" },
+  Commercial:  { icon: "📊", badge: "badge-amber",  color: "var(--amber)" },
+  Default:     { icon: "📄", badge: "badge-no",     color: "var(--slate-mid)" },
 };
 
-export default function ReferencesPage({ references, drug, onBack }) {
+export default function ReferencesPage({ references, drug, onBack, stepProps }) {
   const grouped = references.reduce((acc, ref) => {
     const cat = ref.category || "Default";
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(ref);
     return acc;
   }, {});
-
   const categories = Object.keys(grouped);
 
   return (
@@ -41,8 +41,9 @@ export default function ReferencesPage({ references, drug, onBack }) {
         </div>
       </div>
 
-      <div className="container">
-        {/* KPI row */}
+      <StepBar {...stepProps} />
+
+      <div className="container" style={{ paddingTop: 28 }}>
         <div className="kpi-grid fade-up delay-1">
           <div className="kpi-card kpi-accent-green">
             <div className="kpi-label">Total Sources</div>
@@ -51,7 +52,7 @@ export default function ReferencesPage({ references, drug, onBack }) {
           </div>
           {categories.map((cat, i) => {
             const meta = CAT_META[cat] || CAT_META.Default;
-            const accents = ["kpi-accent-blue", "kpi-accent-amber", "kpi-accent-navy"];
+            const accents = ["kpi-accent-blue","kpi-accent-amber","kpi-accent-navy"];
             return (
               <div key={cat} className={`kpi-card ${accents[i % accents.length]}`}>
                 <div className="kpi-label">{cat}</div>
@@ -77,25 +78,19 @@ export default function ReferencesPage({ references, drug, onBack }) {
               return (
                 <div key={cat} className={`fade-up delay-${Math.min(catIdx + 2, 5)}`}>
                   <div className="section-header">
-                    <div className="section-title" style={{ "--section-color": meta.color }}>
-                      {meta.icon} {cat} References
-                    </div>
+                    <div className="section-title">{meta.icon} {cat} References</div>
                     <span className={`badge ${meta.badge}`}>{grouped[cat].length}</span>
                   </div>
                   <div className="card">
                     {grouped[cat].map((ref, idx) => (
                       <div key={idx} className="ref-card">
-                        <div className="ref-icon" style={{ background: `${meta.color}15`, borderColor: `${meta.color}30` }}>
-                          {meta.icon}
-                        </div>
+                        <div className="ref-icon" style={{ background: `${meta.color}15`, borderColor: `${meta.color}30` }}>{meta.icon}</div>
                         <div className="ref-content">
                           <div className="ref-category" style={{ color: meta.color }}>{ref.category}</div>
                           <div className="ref-desc">{ref.description}</div>
                           <div className="ref-source">Source: {ref.source}</div>
                         </div>
-                        <div style={{ flexShrink: 0 }}>
-                          <span className={`badge ${meta.badge}`}>{ref.source}</span>
-                        </div>
+                        <div style={{ flexShrink: 0 }}><span className={`badge ${meta.badge}`}>{ref.source}</span></div>
                       </div>
                     ))}
                   </div>
@@ -110,7 +105,7 @@ export default function ReferencesPage({ references, drug, onBack }) {
           <div>
             <div className="disclaimer-title">Research Use Only — Not Regulatory or Legal Advice</div>
             <div className="disclaimer-text">
-              All information is generated for research and informational purposes only under 21 CFR Part 314. It does not constitute legal, regulatory, or medical advice. Always consult qualified regulatory affairs professionals and review primary source materials before making any submission or business decisions. ReformAI makes no warranties as to accuracy or completeness.
+              All information is generated for research and informational purposes only under 21 CFR Part 314. It does not constitute legal, regulatory, or medical advice. Always consult qualified regulatory affairs professionals and review primary source materials before making any submission or business decisions.
             </div>
           </div>
         </div>
