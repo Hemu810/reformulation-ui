@@ -144,19 +144,14 @@ def get_options():
 # ──────────────────────────────────────────────────────────────
 
 @app.get("/api/autocomplete/drug")
-def autocomplete_drug(q: str = Query("", min_length=1)):
+def autocomplete_drug(q: str = Query("", min_length=0)):
     try:
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT TOP 10 DrugName
-            FROM Drug
-            WHERE DrugName LIKE '%' + ? + '%' AND IsActive = 1
-            ORDER BY DrugName
-        """, (q,))       
+        cursor.execute("EXEC [dbo].[sp_GetDrugNameAutoComplete] @DrugName = %s", (q,))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
-        return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
+        return {"suggestions": list(dict.fromkeys([r[0] for r in rows if r[0]]))[:10]}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -166,7 +161,7 @@ def autocomplete_indication(q: str = Query("", min_length=1)):
     try:
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[sp_GetIndicationAutoComplete] @IndicationName = ?", (q,))
+        cursor.execute("EXEC [dbo].[sp_GetIndicationAutoComplete] @IndicationName = %s", (q,))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
         return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
@@ -179,7 +174,7 @@ def autocomplete_roa(q: str = Query("", min_length=1)):
     try:
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[sp_GetRouteOfAdminAutoComplete] @RouteOfAdminName = ?", (q,))
+        cursor.execute("EXEC [dbo].[sp_GetRouteOfAdminAutoComplete] @RouteOfAdminName = %s", (q,))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
         return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
@@ -195,7 +190,7 @@ def autocomplete_dosageform(q: str = Query("", min_length=1)):
         cursor.execute("""
             SELECT TOP 10 DosageFormName
             FROM DosageForm
-            WHERE DosageFormName LIKE '%' + ? + '%' AND IsActive = 1
+            WHERE DosageFormName LIKE '%' + %s + '%' AND IsActive = 1
             ORDER BY DosageFormName
         """, (q,))
         rows = cursor.fetchall()
@@ -210,7 +205,7 @@ def autocomplete_moleculetype(q: str = Query("", min_length=1)):
     try:
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[sp_GetMoleculeNatureAutoComplete] @MoleculeNatureName = ?", (q,))
+        cursor.execute("EXEC [dbo].[sp_GetMoleculeNatureAutoComplete] @MoleculeNatureName = %s", (q,))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
         return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
