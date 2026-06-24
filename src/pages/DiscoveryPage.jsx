@@ -444,7 +444,7 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                       value={filters.drugName}
                       onChange={set("drugName")}
                       onSelect={(s) => setFilters(f => ({ ...f, drugName: s }))}
-                      endpoint="/api/autocomplete/drug"
+                      endpoint={`${BASE}/api/autocomplete/drug`} 
                     />
                   </div>
                   <div style={fieldStyle}>
@@ -455,7 +455,7 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                       value={filters.moleculeType}
                       onChange={set("moleculeType")}
                       onSelect={(s) => setFilters(f => ({ ...f, moleculeType: s }))}
-                      endpoint="/api/autocomplete/moleculetype"
+                      endpoint={`${BASE}/api/autocomplete/moleculetype`}
                     />
                   </div>
                   <div style={fieldStyle}>
@@ -466,7 +466,7 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                       value={filters.indication}
                       onChange={set("indication")}
                       onSelect={(s) => setFilters(f => ({ ...f, indication: s }))}
-                      endpoint="/api/autocomplete/indication"
+                      endpoint={`${BASE}/api/autocomplete/indication`}
                     />
                   </div>
                 </div>
@@ -488,7 +488,7 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                       value={filters.roa}
                       onChange={set("roa")}
                       onSelect={(s) => setFilters(f => ({ ...f, roa: s }))}
-                      endpoint="/api/autocomplete/roa"
+                      endpoint={`${BASE}/api/autocomplete/roa`}
                     />
                   </div>
                   <div style={fieldStyle}>
@@ -499,7 +499,7 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                       value={filters.dosageForm}
                       onChange={set("dosageForm")}
                       onSelect={(s) => setFilters(f => ({ ...f, dosageForm: s }))}
-                      endpoint="/api/autocomplete/dosageform"
+                      endpoint={`${BASE}/api/autocomplete/dosageform`}
                     />
                   </div>
                 </div>
