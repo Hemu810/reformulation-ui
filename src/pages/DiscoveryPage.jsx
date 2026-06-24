@@ -24,7 +24,7 @@ function TypeaheadInput({ value, onChange, onSelect, endpoint, placeholder, styl
       setDropPos({ top: r.bottom + window.scrollY + 2, left: r.left + window.scrollX, width: r.width });
     }
 
-    fetch(`${BASE}${endpoint}?q=${encodeURIComponent(q)}`, { signal: abortRef.current.signal })
+    fetch(`${endpoint}?q=${encodeURIComponent(q)}`, { signal: abortRef.current.signal })
       .then(r => r.json())
       .then(d => { const list = d.suggestions || []; setSuggestions(list); setOpen(list.length > 0); })
       .catch(() => {});
