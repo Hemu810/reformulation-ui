@@ -21,7 +21,6 @@ Run
 
 import os
 import pymssql
-import pyodbc
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
