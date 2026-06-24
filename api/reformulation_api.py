@@ -148,7 +148,12 @@ def autocomplete_drug(q: str = Query("", min_length=1)):
     try:
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[sp_GetDrugNameAutoComplete] @DrugName = ?", (q,))
+         cursor.execute("""
+            SELECT TOP 10 DrugName
+            FROM Drug
+            WHERE DrugName LIKE '%' + ? + '%' AND IsActive = 1
+            ORDER BY DrugName
+        """, (q,)) 
         rows = cursor.fetchall()
         cursor.close(); conn.close()
         return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
