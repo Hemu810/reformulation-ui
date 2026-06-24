@@ -12,26 +12,26 @@ const BASE = process.env.REACT_APP_API_URL || "";
 
 function App() {
   const [currentPage, setCurrentPage] = useState("discovery");
-  const [selectedRoa, setSelectedRoa] = useState("");
-  const [selectedForm, setSelectedForm] = useState("");
+  const [activeFilters, setActiveFilters] = useState({});
   const [candidates, setCandidates] = useState([]);
   const [selectedDrug, setSelectedDrug] = useState(null);
   const [strategy, setStrategy] = useState(null);
   const [references, setReferences] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingCandidateId, setLoadingCandidateId] = useState(null);
 
   const navigate = (page) => setCurrentPage(page);
 
   const stepProps = { currentPage, navigate, selectedDrug, strategy };
 
-  const handleFilter = async (roa, form) => {
+  const handleFilter = async (filters) => {
     setIsLoading(true);
-    setSelectedRoa(roa);
-    setSelectedForm(form);
+    setActiveFilters(filters);
     try {
-      const res = await fetch(
-        `${BASE}/api/candidates?roa=${encodeURIComponent(roa)}&dosageForm=${encodeURIComponent(form)}`
+      const params = new URLSearchParams(
+        Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ""))
       );
+      const res = await fetch(`${BASE}/api/candidates?${params}`);
       const data = await res.json();
       setCandidates(data.candidates || []);
       setSelectedDrug(null);
@@ -43,7 +43,7 @@ function App() {
   };
 
   const handleSelectDrug = async (candidateId) => {
-    setIsLoading(true);
+    setLoadingCandidateId(candidateId);
     try {
       const res = await fetch(`${BASE}/api/drug/${candidateId}`);
       const data = await res.json();
@@ -52,7 +52,7 @@ function App() {
       setReferences([]);
       navigate("drug");
     } catch (e) { console.error(e); }
-    finally { setIsLoading(false); }
+    finally { setLoadingCandidateId(null); }
   };
 
   const handleGetStrategy = async () => {
@@ -75,11 +75,11 @@ function App() {
     candidates: (
       <CandidatesPage
         candidates={candidates}
-        selectedRoa={selectedRoa}
-        selectedForm={selectedForm}
+        activeFilters={activeFilters}
         onSelectDrug={handleSelectDrug}
         onBack={() => navigate("discovery")}
         isLoading={isLoading}
+        loadingCandidateId={loadingCandidateId}
         stepProps={stepProps}
       />
     ),

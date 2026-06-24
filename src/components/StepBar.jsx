@@ -3,9 +3,9 @@ import React from "react";
 const STEP_ORDER = ["discovery", "candidates", "drug", "strategy", "references"];
 
 const STEPS = [
-  { id: "discovery",  label: "Discovery",    desc: "Filter molecules" },
-  { id: "candidates", label: "Candidates",   desc: "Review shortlist" },
-  { id: "drug",       label: "Drug Profile", desc: "IP & commercial snapshot" },
+  { id: "discovery",  label: "Discovery",       desc: "Filter molecules" },
+  { id: "candidates", label: "Molecules",      desc: "Review shortlist" },
+  { id: "drug",       label: "Molecule Profile", desc: "IP & commercial snapshot" },
   { id: "strategy",   label: "Strategy",     desc: "AI recommendations" },
   { id: "references", label: "Evidence",     desc: "Supporting literature" },
 ];

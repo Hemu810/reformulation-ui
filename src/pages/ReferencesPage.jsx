@@ -20,7 +20,7 @@ export default function ReferencesPage({ references, drug, onBack, stepProps }) 
 
   return (
     <>
-      <div className="page-top-bar">
+      <div className="page-top-bar" style={{ marginBottom: 0 }}>
         <div className="page-top-inner">
           <div>
             <div className="page-breadcrumb">
@@ -43,7 +43,7 @@ export default function ReferencesPage({ references, drug, onBack, stepProps }) 
 
       <StepBar {...stepProps} />
 
-      <div className="container" style={{ paddingTop: 28 }}>
+      <div className="container" style={{ paddingTop: 20 }}>
         <div className="kpi-grid fade-up delay-1">
           <div className="kpi-card kpi-accent-green">
             <div className="kpi-label">Total Sources</div>

@@ -1,7 +1,8 @@
 import React from "react";
 import StepBar from "../components/StepBar";
 
-export default function CandidatesPage({ candidates, selectedRoa, selectedForm, onSelectDrug, onBack, isLoading, stepProps }) {
+export default function CandidatesPage({ candidates, activeFilters = {}, onSelectDrug, onBack, isLoading, loadingCandidateId, stepProps }) {
+  const { opportunityType, roa: selectedRoa, dosageForm: selectedForm } = activeFilters;
   const sorted = [...candidates].sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
   const count505  = candidates.filter(c => c.opportunity_flags?.["505b2_reformulation_candidate"]).length;
   const countFTF  = candidates.filter(c => c.opportunity_flags?.["anda_first_to_file_candidate"]).length;
@@ -11,18 +12,18 @@ export default function CandidatesPage({ candidates, selectedRoa, selectedForm, 
 
   return (
     <>
-      <div className="page-top-bar">
+      <div className="page-top-bar" style={{ marginBottom: 0 }}>
         <div className="page-top-inner">
           <div>
             <div className="page-breadcrumb">
               <span style={{ cursor: "pointer", color: "var(--green)" }} onClick={onBack}>Discovery</span>
               <span className="breadcrumb-sep">/</span>
-              <span className="breadcrumb-active">Candidates</span>
+              <span className="breadcrumb-active">Molecules</span>
             </div>
-            <h1 className="page-title">Candidate Molecules</h1>
+            <h1 className="page-title">Molecules</h1>
             <div className="page-subtitle">
-              {selectedRoa && selectedForm
-                ? <>{candidates.length} result{candidates.length !== 1 ? "s" : ""} · {selectedForm} · {selectedRoa}</>
+              {opportunityType
+                ? <>{candidates.length} result{candidates.length !== 1 ? "s" : ""} · {opportunityType}{selectedForm ? ` · ${selectedForm}` : ""}{selectedRoa ? ` · ${selectedRoa}` : ""}</>
                 : "All screened candidates"}
             </div>
           </div>
@@ -35,7 +36,7 @@ export default function CandidatesPage({ candidates, selectedRoa, selectedForm, 
 
       <StepBar {...stepProps} />
 
-      <div className="container" style={{ paddingTop: 28 }}>
+      <div className="container" style={{ paddingTop: 20 }}>
         <div className="kpi-grid fade-up delay-1">
           <div className="kpi-card kpi-accent-green">
             <div className="kpi-label">Total Results</div>
@@ -114,8 +115,8 @@ export default function CandidatesPage({ candidates, selectedRoa, selectedForm, 
                         ) : <span className="td-muted">—</span>}
                       </td>
                       <td>
-                        <button className="btn btn-navy btn-sm" onClick={() => onSelectDrug(c.candidate_id)} disabled={isLoading}>
-                          {isLoading ? <div className="spinner" style={{ width: 10, height: 10 }} /> : "Profile →"}
+                        <button className="btn btn-navy btn-sm" onClick={() => onSelectDrug(c.candidate_id)} disabled={loadingCandidateId !== null}>
+                          {loadingCandidateId === c.candidate_id ? <div className="spinner" style={{ width: 10, height: 10 }} /> : "Profile →"}
                         </button>
                       </td>
                     </tr>

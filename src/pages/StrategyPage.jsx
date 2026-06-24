@@ -14,7 +14,7 @@ export default function StrategyPage({ strategy, drug, onViewReferences, onBack,
 
   return (
     <>
-      <div className="page-top-bar">
+      <div className="page-top-bar" style={{ marginBottom: 0 }}>
         <div className="page-top-inner">
           <div>
             <div className="page-breadcrumb">
@@ -37,7 +37,7 @@ export default function StrategyPage({ strategy, drug, onViewReferences, onBack,
 
       <StepBar {...stepProps} />
 
-      <div className="container" style={{ paddingTop: 28 }}>
+      <div className="container" style={{ paddingTop: 20 }}>
         <div className="summary-banner fade-up delay-1">
           <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
             <div style={{ fontSize: 28, flexShrink: 0 }}>🎯</div>
