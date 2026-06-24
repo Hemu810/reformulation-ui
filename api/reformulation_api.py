@@ -20,6 +20,7 @@ Run
 """
 
 import os
+import pymssql
 import pyodbc
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
@@ -55,7 +56,7 @@ app.add_middleware(
 #  DATABASE
 # ──────────────────────────────────────────────────────────────
 
-def _get_conn() -> pyodbc.Connection:
+def _get_conn():
     server   = os.getenv("DB_SERVER")
     database = os.getenv("DB_DATABASE", "DOLOXE")
     username = os.getenv("DB_USERNAME")
@@ -64,19 +65,16 @@ def _get_conn() -> pyodbc.Connection:
     if not all([server, username, password]):
         raise RuntimeError("Missing DB_SERVER / DB_USERNAME / DB_PASSWORD in .env")
 
-    conn_str = (
-        "DRIVER={ODBC Driver 18 for SQL Server};"
-        f"SERVER={server};"
-        f"DATABASE={database};"
-        f"UID={username};"
-        f"PWD={password};"
-        "Encrypt=no;"
-        "Connection Timeout=30;"
+    return pymssql.connect(
+        server=server,
+        database=database,
+        user=username,
+        password=password,
+        login_timeout=30
     )
-    return pyodbc.connect(conn_str)
 
 
-def _rows(cursor: pyodbc.Cursor) -> list[dict]:
+def _rows(cursor) -> list[dict]:
     cols = [c[0] for c in cursor.description]
     return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
