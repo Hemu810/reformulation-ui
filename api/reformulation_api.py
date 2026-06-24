@@ -151,7 +151,7 @@ def autocomplete_drug(q: str = Query("", min_length=0)):
         cursor.execute("EXEC [dbo].[sp_GetDrugNameAutoComplete] @DrugName = %s", (q,))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
-        return {"suggestions": list(dict.fromkeys([r[0] for r in rows if r[0]]))[:10]}
+        return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
