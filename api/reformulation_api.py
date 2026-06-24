@@ -387,28 +387,28 @@ def get_candidates(
             LEFT JOIN Innovation    inv ON inv.Id  = d.InnovationId
             WHERE
                 d.StatusId = 2
-                AND (? = '' OR dd.DevelopmentApprovalPath LIKE '%' + ? + '%')
-                AND (? = '' OR d.GenericName  LIKE '%' + ? + '%'
-                            OR d.BrandName    LIKE '%' + ? + '%'
-                            OR d.AliasName    LIKE '%' + ? + '%'
-                            OR dd.GenericName LIKE '%' + ? + '%'
-                            OR dd.BrandName   LIKE '%' + ? + '%')
-                AND (? = '' OR dd.DevelopmentIndication LIKE '%' + ? + '%')
-                AND (? = '' OR dd.DevelopmentRouteOfAdmin LIKE '%' + ? + '%'
-                            OR roa.RouteOfAdminName       LIKE '%' + ? + '%')
-                AND (? = '' OR dd.DevelopmentDosageForm  LIKE '%' + ? + '%'
-                            OR df.DosageFormName          LIKE '%' + ? + '%')
-                AND (? = '' OR inv.InnovationName = ?)
-                AND (? IS NULL OR dd.ApprovalDate >= ?)
-                AND (? IS NULL OR EXISTS (
+                AND (%s = '' OR dd.DevelopmentApprovalPath LIKE '%' + %s + '%')
+                AND (%s = '' OR d.GenericName  LIKE '%' + %s + '%'
+                            OR d.BrandName    LIKE '%' + %s + '%'
+                            OR d.AliasName    LIKE '%' + %s + '%'
+                            OR dd.GenericName LIKE '%' + %s + '%'
+                            OR dd.BrandName   LIKE '%' + %s + '%')
+                AND (%s = '' OR dd.DevelopmentIndication LIKE '%' + %s + '%')
+                AND (%s = '' OR dd.DevelopmentRouteOfAdmin LIKE '%' + %s + '%'
+                            OR roa.RouteOfAdminName       LIKE '%' + %s + '%')
+                AND (%s = '' OR dd.DevelopmentDosageForm  LIKE '%' + %s + '%'
+                            OR df.DosageFormName          LIKE '%' + %s + '%')
+                AND (%s = '' OR inv.InnovationName = %s)
+                AND (%s IS NULL OR dd.ApprovalDate >= %s)
+                AND (%s IS NULL OR EXISTS (
                         SELECT 1 FROM DrugExpiry de
                         WHERE de.DrugId = d.Id
-                          AND de.PatentExpiry >= ?
+                          AND de.PatentExpiry >= %s
                     ))
-                AND (? IS NULL OR EXISTS (
+                AND (%s IS NULL OR EXISTS (
                         SELECT 1 FROM DrugExpiry de
                         WHERE de.DrugId = d.Id
-                          AND de.PatentExpiry <= ?
+                          AND de.PatentExpiry <= %s
                     ))
             ORDER BY opportunity_score DESC, dd.ApprovalDate DESC
         """,
