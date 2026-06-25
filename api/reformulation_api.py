@@ -498,23 +498,26 @@ def get_candidates(
                 ISNULL(dd.DevelopmentDosageForm,
                     df.DosageFormName)                                    AS dosage_form,
                 ISNULL(dd.DevelopmentApprovalPath, '')                       AS regulatory_pathway,
-                (SELECT TOP 1 ind.IndicationName
+                (SELECT STRING_AGG(ind.IndicationName, ' : ')
                 FROM DrugDevelopmentIndication ddi
                 INNER JOIN Indication ind ON ind.Id = ddi.IndicationId
-                WHERE ddi.DrugDevelopmentId = dd.Id
-                ORDER BY ddi.Id ASC)                                        AS indication_text,
+                WHERE ddi.DrugDevelopmentId = dd.Id)                        AS indication_text,
                 dd.ApprovalDate                                              AS approval_date,
                 (SELECT TOP 1 de.PatentExpiry
                 FROM DrugExpiry de
                 WHERE de.DrugId = d.Id
+                AND de.CountryId = 231
                 ORDER BY de.PatentExpiry DESC)                              AS patent_expiry,
                 (SELECT TOP 1 dsf.Year
                 FROM DrugSalesForecast dsf
                 WHERE dsf.DrugId = d.Id
+                AND dsf.CountryId = 231
                 ORDER BY dsf.Year DESC)                                     AS sales_year,
+
                 (SELECT TOP 1 dsf.TotalSale
                 FROM DrugSalesForecast dsf
                 WHERE dsf.DrugId = d.Id
+                AND dsf.CountryId = 231
                 ORDER BY dsf.Year DESC)                                     AS total_sale,
                 CASE
                     WHEN dd.DevelopmentApprovalPath LIKE '%505(b)(2)%'      THEN 1
