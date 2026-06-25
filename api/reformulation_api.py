@@ -148,50 +148,47 @@ def autocomplete_drug(q: str = Query("", min_length=0)):
     try:
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[sp_GetDrugNameAutoComplete] @DrugName = %s", (q,))
+        cursor.execute("""
+            SELECT TOP 20 d.DrugName, d.GenericName, d.BrandName, d.AliasName
+            FROM Drug d
+            WHERE (
+                d.DrugName   LIKE '%' + %s + '%'
+                OR d.GenericName LIKE '%' + %s + '%'
+                OR d.BrandName   LIKE '%' + %s + '%'
+                OR d.AliasName   LIKE '%' + %s + '%'
+            )
+            AND d.StageOfDevelopmentId = 18
+            AND d.DrugTypeId = 2
+            AND d.StatusId = 2
+            ORDER BY d.DrugName
+        """, (q, q, q, q))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
-        return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
+        seen = set()
+        suggestions = []
+        for r in rows:
+            for val in r:
+                if val and val not in seen and q.lower() in val.lower():
+                    seen.add(val)
+                    suggestions.append(val)
+        return {"suggestions": suggestions[:10]}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-
 
 @app.get("/api/autocomplete/indication")
 def autocomplete_indication(q: str = Query("", min_length=1)):
     try:
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[sp_GetIndicationAutoComplete] @IndicationName = %s", (q,))
-        rows = cursor.fetchall()
-        cursor.close(); conn.close()
-        return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@app.get("/api/autocomplete/roa")
-def autocomplete_roa(q: str = Query("", min_length=1)):
-    try:
-        conn = _get_conn()
-        cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[sp_GetRouteOfAdminAutoComplete] @RouteOfAdminName = %s", (q,))
-        rows = cursor.fetchall()
-        cursor.close(); conn.close()
-        return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@app.get("/api/autocomplete/dosageform")
-def autocomplete_dosageform(q: str = Query("", min_length=1)):
-    try:
-        conn = _get_conn()
-        cursor = conn.cursor()
         cursor.execute("""
-            SELECT TOP 10 DosageFormName
-            FROM DosageForm
-            WHERE DosageFormName LIKE '%' + %s + '%' AND IsActive = 1
-            ORDER BY DosageFormName
+            SELECT TOP 10 DISTINCT dd.DevelopmentIndication
+            FROM DrugDevelopment dd
+            JOIN Drug d ON d.Id = dd.DrugId
+            WHERE dd.DevelopmentIndication LIKE '%' + %s + '%'
+              AND d.StageOfDevelopmentId = 18
+              AND d.DrugTypeId = 2
+              AND d.StatusId = 2
+            ORDER BY dd.DevelopmentIndication
         """, (q,))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
@@ -199,16 +196,117 @@ def autocomplete_dosageform(q: str = Query("", min_length=1)):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-
-@app.get("/api/autocomplete/moleculetype")
-def autocomplete_moleculetype(q: str = Query("", min_length=1)):
+@app.get("/api/autocomplete/roa")
+def autocomplete_roa(q: str = Query("", min_length=1)):
     try:
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("EXEC [dbo].[sp_GetMoleculeNatureAutoComplete] @MoleculeNatureName = %s", (q,))
+        cursor.execute("""
+            SELECT TOP 10 DISTINCT roa.RouteOfAdminName
+            FROM RouteOfAdmin roa
+            JOIN DrugDevelopment dd ON dd.RouteOfAdminId = roa.Id
+            JOIN Drug d ON d.Id = dd.DrugId
+            WHERE roa.RouteOfAdminName LIKE '%' + %s + '%'
+              AND d.StageOfDevelopmentId = 18
+              AND d.DrugTypeId = 2
+              AND d.StatusId = 2
+            ORDER BY roa.RouteOfAdminName
+        """, (q,))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
-        return {"suggestions": list(dict.fromkeys([r[1] for r in rows if r[1]]))[:10]}
+        return {"suggestions": [r[0] for r in rows if r[0]]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+@app.get("/api/autocomplete/dosageform")
+def autocomplete_dosageform(q: str = Query("", min_length=1)):
+    try:
+        conn = _get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT TOP 10 DISTINCT df.DosageFormName
+            FROM DosageForm df
+            JOIN DrugDevelopment dd ON dd.DosageFormId = df.Id
+            JOIN Drug d ON d.Id = dd.DrugId
+            WHERE df.DosageFormName LIKE '%' + %s + '%'
+              AND d.StageOfDevelopmentId = 18
+              AND d.DrugTypeId = 2
+              AND d.StatusId = 2
+            ORDER BY df.DosageFormName
+        """, (q,))
+        rows = cursor.fetchall()
+        cursor.close(); conn.close()
+        return {"suggestions": [r[0] for r in rows if r[0]]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+@app.get("/api/autocomplete/fyear")
+def autocomplete_fyear():
+    try:
+        conn = _get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT dsf.Year
+            FROM DrugSalesForecast dsf
+            JOIN Drug d ON d.Id = dsf.DrugId
+            WHERE d.StageOfDevelopmentId = 18
+              AND d.DrugTypeId = 2
+              AND d.StatusId = 2
+            ORDER BY dsf.Year
+        """)
+        rows = cursor.fetchall()
+        cursor.close(); conn.close()
+        return {"years": [r[0] for r in rows if r[0]]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    
+@app.get("/api/autocomplete/sales")
+def autocomplete_sales():
+    try:
+        conn = _get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                MIN(dsf.TotalSale) AS min_sale,
+                MAX(dsf.TotalSale) AS max_sale
+            FROM DrugSalesForecast dsf
+            JOIN Drug d ON d.Id = dsf.DrugId
+            WHERE d.StageOfDevelopmentId = 18
+              AND d.DrugTypeId = 2
+              AND d.StatusId = 2
+              AND dsf.TotalSale > 0
+        """)
+        row = cursor.fetchone()
+        cursor.close(); conn.close()
+        return {
+            "minSale": float(row[0]) if row[0] else 0,
+            "maxSale": float(row[1]) if row[1] else 0,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    
+@app.get("/api/autocomplete/patentexpiry")
+def autocomplete_patentexpiry():
+    try:
+        conn = _get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                MIN(de.PatentExpiry) AS min_expiry,
+                MAX(de.PatentExpiry) AS max_expiry
+            FROM DrugExpiry de
+            JOIN Drug d ON d.Id = de.DrugId
+            WHERE d.StageOfDevelopmentId = 18
+              AND d.DrugTypeId = 2
+              AND d.StatusId = 2
+              AND de.PatentExpiry IS NOT NULL
+        """)
+        row = cursor.fetchone()
+        cursor.close(); conn.close()
+        return {
+            "minExpiry": _safe(row[0]) if row[0] else None,
+            "maxExpiry": _safe(row[1]) if row[1] else None,
+        }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -330,6 +428,8 @@ def get_candidates(
     patentExpiryFrom: Optional[str] = Query(None),
     patentExpiryTo:   Optional[str] = Query(None),
     diseaseArea:      Optional[str] = Query(None),
+    sales:   Optional[str] = Query(None),
+    fyYear:  Optional[str] = Query(None),
 ):
     try:
         conn   = _get_conn()
@@ -337,10 +437,10 @@ def get_candidates(
 
         # Map opportunity type to approval path keyword for filtering
         opp_path_filter = {
-            "reformulation":  "505",
-            "repurpose":      "",         # no strict path filter for repurpose
-            "first-to-file":  "ANDA",
-        }.get((opportunityType or "").lower(), "")
+        "reformulation":  "505(b)(2)",
+        "repurpose":      "",
+        "first-to-file":  "ANDA",
+    }.get((opportunityType or "").lower(), "")
 
         # drugName is a catch-all (generic, brand, alias)
         name_search = drugName or genericName or brandName or researchCode or ""
@@ -387,8 +487,11 @@ def get_candidates(
             LEFT JOIN Innovation    inv ON inv.Id  = d.InnovationId
             WHERE
                 d.StatusId = 2
+                AND d.DrugTypeId = 2
+                And d.StageOfDevelopmentId = 18
                 AND (%s = '' OR dd.DevelopmentApprovalPath LIKE '%' + %s + '%')
-                AND (%s = '' OR d.GenericName  LIKE '%' + %s + '%'
+                AND (%s = '' OR d.DrugName    LIKE '%' + %s + '%'
+                            OR d.GenericName  LIKE '%' + %s + '%'
                             OR d.BrandName    LIKE '%' + %s + '%'
                             OR d.AliasName    LIKE '%' + %s + '%'
                             OR dd.GenericName LIKE '%' + %s + '%'
@@ -410,6 +513,12 @@ def get_candidates(
                         WHERE de.DrugId = d.Id
                           AND de.PatentExpiry <= %s
                     ))
+                AND (%s IS NULL OR EXISTS (
+                SELECT 1 FROM DrugSalesForecast dsf
+                WHERE dsf.DrugId = d.Id
+                AND (%s IS NULL OR dsf.Year = %s)
+                AND dsf.TotalSale >= %s
+            ))
             ORDER BY opportunity_score DESC, dd.ApprovalDate DESC
         """,
         (
@@ -422,6 +531,10 @@ def get_candidates(
             approvalDate,       approvalDate,
             patentExpiryFrom,   patentExpiryFrom,
             patentExpiryTo,     patentExpiryTo,
+            None if not sales else sales,        # outer NULL check
+            None if not fyYear else fyYear,      # year check 1
+            None if not fyYear else fyYear,      # year check 2
+            None if not sales else sales,        # TotalSale >=
         ))
 
         rows = _rows(cursor)
