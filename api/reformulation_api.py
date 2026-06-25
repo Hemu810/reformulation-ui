@@ -20,6 +20,7 @@ Run
 """
 
 import os
+import time
 import pymssql
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
@@ -88,9 +89,34 @@ def _safe(v):
         return float(v)
     return v
 
-
 def _coerce(row: dict) -> dict:
     return {k: _safe(v) for k, v in row.items()}
+
+
+# ──────────────────────────────────────────────────────────────
+#  MOLECULE POOL CACHE
+#  Caches valid Drug IDs matching analytics filter for 1 hour
+# ──────────────────────────────────────────────────────────────
+
+_pool_cache = {"ids": None, "timestamp": 0}
+
+def _get_molecule_pool():
+    now = time.time()
+    if _pool_cache["ids"] is None or (now - _pool_cache["timestamp"]) > 3600:
+        conn = _get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT Id FROM Drug
+            WHERE StageOfDevelopmentId = 18
+              AND DrugTypeId = 2
+              AND StatusId = 2
+        """)
+        ids = [r[0] for r in cursor.fetchall()]
+        cursor.close()
+        conn.close()
+        _pool_cache["ids"] = ids
+        _pool_cache["timestamp"] = now
+    return _pool_cache["ids"]
 
 
 # ──────────────────────────────────────────────────────────────
@@ -146,49 +172,43 @@ def get_options():
 @app.get("/api/autocomplete/drug")
 def autocomplete_drug(q: str = Query("", min_length=0)):
     try:
+        pool_ids = _get_molecule_pool()
+        id_list = ",".join(str(i) for i in pool_ids)
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT TOP 20 d.DrugName, d.GenericName, d.BrandName, d.AliasName
+        cursor.execute(f"""
+            SELECT DISTINCT TOP 10 ISNULL(d.DrugName, d.GenericName)
             FROM Drug d
-            WHERE (
+            WHERE d.Id IN ({id_list})
+            AND (
                 d.DrugName   LIKE '%' + %s + '%'
                 OR d.GenericName LIKE '%' + %s + '%'
                 OR d.BrandName   LIKE '%' + %s + '%'
                 OR d.AliasName   LIKE '%' + %s + '%'
             )
-            AND d.StageOfDevelopmentId = 18
-            AND d.DrugTypeId = 2
-            AND d.StatusId = 2
-            ORDER BY d.DrugName
+            ORDER BY ISNULL(d.DrugName, d.GenericName)
         """, (q, q, q, q))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
-        seen = set()
-        suggestions = []
-        for r in rows:
-            for val in r:
-                if val and val not in seen and q.lower() in val.lower():
-                    seen.add(val)
-                    suggestions.append(val)
-        return {"suggestions": suggestions[:10]}
+        return {"suggestions": [r[0] for r in rows if r[0]]}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
 @app.get("/api/autocomplete/indication")
 def autocomplete_indication(q: str = Query("", min_length=1)):
     try:
+        pool_ids = _get_molecule_pool()
+        id_list = ",".join(str(i) for i in pool_ids)
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT TOP 10 DISTINCT dd.DevelopmentIndication
-            FROM DrugDevelopment dd
-            JOIN Drug d ON d.Id = dd.DrugId
-            WHERE dd.DevelopmentIndication LIKE '%' + %s + '%'
-              AND d.StageOfDevelopmentId = 18
-              AND d.DrugTypeId = 2
-              AND d.StatusId = 2
-            ORDER BY dd.DevelopmentIndication
+        cursor.execute(f"""
+            SELECT DISTINCT TOP 10 ind.IndicationName
+            FROM Indication ind
+            INNER JOIN DrugDevelopmentIndication ddi ON ddi.IndicationId = ind.Id
+            INNER JOIN DrugDevelopment dd ON dd.Id = ddi.DrugDevelopmentId
+            WHERE dd.DrugId IN ({id_list})
+              AND ind.IndicationName LIKE '%' + %s + '%'
+            ORDER BY ind.IndicationName
         """, (q,))
         rows = cursor.fetchall()
         cursor.close(); conn.close()
@@ -197,19 +217,23 @@ def autocomplete_indication(q: str = Query("", min_length=1)):
         raise HTTPException(status_code=500, detail=str(exc))
 
 @app.get("/api/autocomplete/roa")
-def autocomplete_roa(q: str = Query("", min_length=1)):
+def autocomplete_roa(q: str = Query("", min_length=2)):
     try:
+        pool_ids = _get_molecule_pool()
+        id_list = ",".join(str(i) for i in pool_ids)
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT TOP 10 DISTINCT roa.RouteOfAdminName
+        cursor.execute(f"""
+            SELECT DISTINCT TOP 10 roa.RouteOfAdminName
             FROM RouteOfAdmin roa
-            JOIN DrugDevelopment dd ON dd.RouteOfAdminId = roa.Id
-            JOIN Drug d ON d.Id = dd.DrugId
             WHERE roa.RouteOfAdminName LIKE '%' + %s + '%'
-              AND d.StageOfDevelopmentId = 18
-              AND d.DrugTypeId = 2
-              AND d.StatusId = 2
+              AND roa.Id IN (
+                SELECT ddroa.RouteOfAdminId
+                FROM DrugDevelopmentRouteOfAdmin ddroa
+                INNER JOIN DrugDevelopment dd ON dd.Id = ddroa.DrugDevelopmentId
+                INNer JOIN RouteOfAdmin r ON r.Id = ddroa.RouteOfAdminId
+                WHERE dd.DrugId IN ({id_list})
+              )
             ORDER BY roa.RouteOfAdminName
         """, (q,))
         rows = cursor.fetchall()
@@ -218,20 +242,20 @@ def autocomplete_roa(q: str = Query("", min_length=1)):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
+
 @app.get("/api/autocomplete/dosageform")
 def autocomplete_dosageform(q: str = Query("", min_length=1)):
     try:
+        pool_ids = _get_molecule_pool()
+        id_list = ",".join(str(i) for i in pool_ids)
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT TOP 10 DISTINCT df.DosageFormName
+        cursor.execute(f"""
+            SELECT DISTINCT TOP 10 df.DosageFormName
             FROM DosageForm df
-            JOIN DrugDevelopment dd ON dd.DosageFormId = df.Id
-            JOIN Drug d ON d.Id = dd.DrugId
-            WHERE df.DosageFormName LIKE '%' + %s + '%'
-              AND d.StageOfDevelopmentId = 18
-              AND d.DrugTypeId = 2
-              AND d.StatusId = 2
+            INNER JOIN DrugDevelopment dd ON dd.DosageFormId = df.Id
+            WHERE dd.DrugId IN ({id_list})
+              AND df.DosageFormName LIKE '%' + %s + '%'
             ORDER BY df.DosageFormName
         """, (q,))
         rows = cursor.fetchall()
@@ -240,18 +264,18 @@ def autocomplete_dosageform(q: str = Query("", min_length=1)):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
+
 @app.get("/api/autocomplete/fyear")
 def autocomplete_fyear():
     try:
+        pool_ids = _get_molecule_pool()
+        id_list = ",".join(str(i) for i in pool_ids)
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT DISTINCT dsf.Year
             FROM DrugSalesForecast dsf
-            JOIN Drug d ON d.Id = dsf.DrugId
-            WHERE d.StageOfDevelopmentId = 18
-              AND d.DrugTypeId = 2
-              AND d.StatusId = 2
+            WHERE dsf.DrugId IN ({id_list})
             ORDER BY dsf.Year
         """)
         rows = cursor.fetchall()
@@ -259,21 +283,19 @@ def autocomplete_fyear():
         return {"years": [r[0] for r in rows if r[0]]}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-    
+
+
 @app.get("/api/autocomplete/sales")
 def autocomplete_sales():
     try:
+        pool_ids = _get_molecule_pool()
+        id_list = ",".join(str(i) for i in pool_ids)
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT 
-                MIN(dsf.TotalSale) AS min_sale,
-                MAX(dsf.TotalSale) AS max_sale
+        cursor.execute(f"""
+            SELECT MIN(dsf.TotalSale), MAX(dsf.TotalSale)
             FROM DrugSalesForecast dsf
-            JOIN Drug d ON d.Id = dsf.DrugId
-            WHERE d.StageOfDevelopmentId = 18
-              AND d.DrugTypeId = 2
-              AND d.StatusId = 2
+            WHERE dsf.DrugId IN ({id_list})
               AND dsf.TotalSale > 0
         """)
         row = cursor.fetchone()
@@ -284,21 +306,19 @@ def autocomplete_sales():
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-    
+
+
 @app.get("/api/autocomplete/patentexpiry")
 def autocomplete_patentexpiry():
     try:
+        pool_ids = _get_molecule_pool()
+        id_list = ",".join(str(i) for i in pool_ids)
         conn = _get_conn()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT 
-                MIN(de.PatentExpiry) AS min_expiry,
-                MAX(de.PatentExpiry) AS max_expiry
+        cursor.execute(f"""
+            SELECT MIN(de.PatentExpiry), MAX(de.PatentExpiry)
             FROM DrugExpiry de
-            JOIN Drug d ON d.Id = de.DrugId
-            WHERE d.StageOfDevelopmentId = 18
-              AND d.DrugTypeId = 2
-              AND d.StatusId = 2
+            WHERE de.DrugId IN ({id_list})
               AND de.PatentExpiry IS NOT NULL
         """)
         row = cursor.fetchone()
@@ -309,7 +329,6 @@ def autocomplete_patentexpiry():
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
-
 
 # ──────────────────────────────────────────────────────────────
 #  ENDPOINT 2  /api/analytics
@@ -334,11 +353,11 @@ def get_analytics():
            AND AddedDate < {MS})                                            AS molecules_tracked,
 
         (SELECT COUNT(DISTINCT dd.DrugId)
-         FROM DrugDevelopment dd
-         JOIN Drug d ON d.Id = dd.DrugId
-         WHERE dd.DevelopmentApprovalPath LIKE '%505%'
-           AND d.StageOfDevelopmentId = 18
-           AND d.AddedDate < {MS})                                          AS eligible_505b2,
+        FROM DrugDevelopment dd
+        JOIN Drug d ON d.Id = dd.DrugId
+        WHERE dd.DevelopmentApprovalPath LIKE '%505(b)(2)%'
+        AND d.StageOfDevelopmentId = 18
+        AND d.AddedDate < {MS})                                          AS eligible_505b2,
 
         (SELECT COUNT(DISTINCT de.DrugId)
          FROM DrugExpiry de
@@ -372,7 +391,7 @@ def get_analytics():
         (SELECT COUNT(DISTINCT dd.DrugId)
          FROM DrugDevelopment dd
          JOIN Drug d ON d.Id = dd.DrugId
-         WHERE dd.DevelopmentApprovalPath LIKE '%505%'
+         WHERE dd.DevelopmentApprovalPath LIKE '%505(b)(2)%'
            AND d.AddedDate >= {MS})                                         AS eligible_505b2_growth,
 
         (SELECT COUNT(DISTINCT de.DrugId)
@@ -444,105 +463,136 @@ def get_candidates(
         cursor = conn.cursor()
 
         # Map opportunity type to approval path keyword for filtering
-        opp_path_filter = {
-        "reformulation":  "505(b)(2)",
-        "repurpose":      "",
-        "first-to-file":  "ANDA",
-    }.get((opportunityType or "").lower(), "")
+        if opportunityType and opportunityType.lower() == "reformulation":
+            opp_path_filter = "505(b)(2)"
+            opp_like = "%505(b)(2)%"
+        elif opportunityType and opportunityType.lower() == "first-to-file":
+            opp_path_filter = "ANDA"
+            opp_like = "%ANDA%"
+        elif opportunityType and opportunityType.lower() == "repurpose":
+            opp_path_filter = ""
+            opp_like = "%"
+        else:
+            opp_path_filter = ""
+            opp_like = "%"
 
         # drugName is a catch-all (generic, brand, alias)
         name_search = drugName or genericName or brandName or researchCode or ""
 
-        cursor.execute("""
-            SELECT TOP 100
+        pool_ids = _get_molecule_pool()
+        id_list = ",".join(str(i) for i in pool_ids)
+
+        cursor.execute(f"""
+            SELECT 
                 dd.Id                                                        AS candidate_id,
                 d.Id                                                         AS drug_id,
+                d.DrugName                                                   AS drug_name,
+                c.CompanyName                                                AS company_name,
                 ISNULL(dd.GenericName, d.GenericName)                        AS generic_name,
                 ISNULL(dd.BrandName,  d.BrandName)                          AS brand_name,
-                ISNULL(dd.DevelopmentRouteOfAdmin,
-                       roa.RouteOfAdminName)                                 AS route_of_administration,
+                (SELECT TOP 1 roa2.RouteOfAdminName
+                FROM DrugDevelopmentRouteOfAdmin ddroa2
+                INNER JOIN RouteOfAdmin roa2 ON roa2.Id = ddroa2.RouteOfAdminId
+                WHERE ddroa2.DrugDevelopmentId = dd.Id
+                ORDER BY ddroa2.Id ASC)                                  AS route_of_administration,
                 ISNULL(dd.DevelopmentDosageForm,
-                       df.DosageFormName)                                    AS dosage_form,
+                    df.DosageFormName)                                    AS dosage_form,
                 ISNULL(dd.DevelopmentApprovalPath, '')                       AS regulatory_pathway,
-                ISNULL(dd.DevelopmentIndication, '')                         AS indication_text,
+                (SELECT TOP 1 ind.IndicationName
+                FROM DrugDevelopmentIndication ddi
+                INNER JOIN Indication ind ON ind.Id = ddi.IndicationId
+                WHERE ddi.DrugDevelopmentId = dd.Id
+                ORDER BY ddi.Id ASC)                                        AS indication_text,
                 dd.ApprovalDate                                              AS approval_date,
-                inv.InnovationName                                           AS innovation,
+                (SELECT TOP 1 de.PatentExpiry
+                FROM DrugExpiry de
+                WHERE de.DrugId = d.Id
+                ORDER BY de.PatentExpiry DESC)                              AS patent_expiry,
+                (SELECT TOP 1 dsf.Year
+                FROM DrugSalesForecast dsf
+                WHERE dsf.DrugId = d.Id
+                ORDER BY dsf.Year DESC)                                     AS sales_year,
+                (SELECT TOP 1 dsf.TotalSale
+                FROM DrugSalesForecast dsf
+                WHERE dsf.DrugId = d.Id
+                ORDER BY dsf.Year DESC)                                     AS total_sale,
                 CASE
-                    WHEN dd.DevelopmentApprovalPath LIKE '%505%'  THEN 1
+                    WHEN dd.DevelopmentApprovalPath LIKE '%505(b)(2)%'      THEN 1
                     ELSE 0
                 END                                                          AS is_505b2,
                 CASE
                     WHEN dd.DevelopmentApprovalPath LIKE '%ANDA%'
-                      OR dd.DevelopmentApprovalPath LIKE '%Para%'           THEN 1
+                    OR dd.DevelopmentApprovalPath LIKE '%Para%'           THEN 1
                     ELSE 0
                 END                                                          AS is_anda,
                 0                                                            AS is_rare_disease,
                 CASE
-                    WHEN inv.InnovationName = 'NME'
-                     AND dd.ApprovalDate IS NOT NULL
-                     AND dd.DevelopmentApprovalPath LIKE '%505%'             THEN 92
-                    WHEN inv.InnovationName = 'NME'
-                     AND dd.ApprovalDate IS NOT NULL                         THEN 80
+                    WHEN dd.DevelopmentApprovalPath LIKE '%505(b)(2)%'
+                    AND dd.ApprovalDate IS NOT NULL                         THEN 92
                     WHEN dd.DevelopmentApprovalPath LIKE '%ANDA%'
-                      OR dd.DevelopmentApprovalPath LIKE '%Para%'           THEN 75
+                    OR dd.DevelopmentApprovalPath LIKE '%Para%'           THEN 75
                     WHEN dd.ApprovalDate IS NOT NULL                         THEN 65
                     ELSE 50
                 END                                                          AS opportunity_score
             FROM DrugDevelopment dd
-            JOIN Drug d ON d.Id = dd.DrugId
-            LEFT JOIN RouteOfAdmin  roa ON roa.Id = dd.RouteOfAdminId
+            INNER JOIN Drug d ON d.Id = dd.DrugId
+            LEFT JOIN Company       c   ON c.Id   = dd.CompanyId
             LEFT JOIN DosageForm    df  ON df.Id  = dd.DosageFormId
-            LEFT JOIN Innovation    inv ON inv.Id  = d.InnovationId
             WHERE
-                d.StatusId = 2
-                AND d.DrugTypeId = 2
-                And d.StageOfDevelopmentId = 18
-                AND (%s = '' OR dd.DevelopmentApprovalPath LIKE '%' + %s + '%')
+                dd.DrugId IN ({id_list})
+                AND (%s = '' OR dd.DevelopmentApprovalPath LIKE %s)
                 AND (%s = '' OR d.DrugName    LIKE '%' + %s + '%'
                             OR d.GenericName  LIKE '%' + %s + '%'
                             OR d.BrandName    LIKE '%' + %s + '%'
                             OR d.AliasName    LIKE '%' + %s + '%'
                             OR dd.GenericName LIKE '%' + %s + '%'
                             OR dd.BrandName   LIKE '%' + %s + '%')
-                AND (%s = '' OR dd.DevelopmentIndication LIKE '%' + %s + '%')
-                AND (%s = '' OR dd.DevelopmentRouteOfAdmin LIKE '%' + %s + '%'
-                            OR roa.RouteOfAdminName       LIKE '%' + %s + '%')
+                AND (%s = '' OR EXISTS (
+                        SELECT 1 FROM DrugDevelopmentIndication ddi
+                        INNER JOIN Indication ind ON ind.Id = ddi.IndicationId
+                        WHERE ddi.DrugDevelopmentId = dd.Id
+                        AND ind.IndicationName LIKE '%' + %s + '%'
+                    ))
+                AND (%s = '' OR EXISTS (
+                        SELECT 1 FROM DrugDevelopmentRouteOfAdmin ddroa
+                        INNER JOIN RouteOfAdmin r ON r.Id = ddroa.RouteOfAdminId
+                        WHERE ddroa.DrugDevelopmentId = dd.Id
+                        AND r.RouteOfAdminName LIKE '%' + %s + '%'
+                    ))
                 AND (%s = '' OR dd.DevelopmentDosageForm  LIKE '%' + %s + '%'
                             OR df.DosageFormName          LIKE '%' + %s + '%')
-                AND (%s = '' OR inv.InnovationName = %s)
                 AND (%s IS NULL OR dd.ApprovalDate >= %s)
                 AND (%s IS NULL OR EXISTS (
                         SELECT 1 FROM DrugExpiry de
                         WHERE de.DrugId = d.Id
-                          AND de.PatentExpiry >= %s
+                        AND de.PatentExpiry >= %s
                     ))
                 AND (%s IS NULL OR EXISTS (
                         SELECT 1 FROM DrugExpiry de
                         WHERE de.DrugId = d.Id
-                          AND de.PatentExpiry <= %s
+                        AND de.PatentExpiry <= %s
                     ))
                 AND (%s IS NULL OR EXISTS (
-                SELECT 1 FROM DrugSalesForecast dsf
-                WHERE dsf.DrugId = d.Id
-                AND (%s IS NULL OR dsf.Year = %s)
-                AND dsf.TotalSale >= %s
-            ))
+                        SELECT 1 FROM DrugSalesForecast dsf
+                        WHERE dsf.DrugId = d.Id
+                        AND (%s IS NULL OR dsf.Year = %s)
+                        AND dsf.TotalSale >= %s
+                    ))
             ORDER BY opportunity_score DESC, dd.ApprovalDate DESC
         """,
         (
-            opp_path_filter, opp_path_filter,
-            name_search, name_search, name_search, name_search, name_search, name_search,
-            indication or "",   indication or "",
-            roa or "",          roa or "",          roa or "",
-            dosageForm or "",   dosageForm or "",   dosageForm or "",
-            innovation or "",   innovation or "",
-            approvalDate,       approvalDate,
-            patentExpiryFrom,   patentExpiryFrom,
-            patentExpiryTo,     patentExpiryTo,
-            None if not sales else sales,        # outer NULL check
-            None if not fyYear else fyYear,      # year check 1
-            None if not fyYear else fyYear,      # year check 2
-            None if not sales else sales,        # TotalSale >=
+            opp_path_filter, opp_like,
+            name_search, name_search, name_search, name_search, name_search, name_search, name_search,
+            indication or "", indication or "",
+            roa or "",        roa or "",
+            dosageForm or "", dosageForm or "", dosageForm or "",
+            approvalDate,     approvalDate,
+            patentExpiryFrom, patentExpiryFrom,
+            patentExpiryTo,   patentExpiryTo,
+            None if not sales else sales,
+            None if not fyYear else fyYear,
+            None if not fyYear else fyYear,
+            None if not sales else sales,
         ))
 
         rows = _rows(cursor)
@@ -558,7 +608,7 @@ def get_candidates(
         candidates = []
         seen = set()
         for r in rows:
-            key = (r.get("generic_name"), r.get("route_of_administration"), r.get("dosage_form"))
+            key = r["drug_id"]
             if key in seen:
                 continue
             seen.add(key)
@@ -575,10 +625,17 @@ def get_candidates(
             candidates.append({
                 "candidate_id":            r["candidate_id"],
                 "research_code":           None,
+                "drug_name":               r.get("drug_name") or "",
+                "company_name":            r.get("company_name") or "",
                 "generic_name":            r.get("generic_name") or "",
                 "brand_name":              r.get("brand_name") or "",
                 "route_of_administration": r.get("route_of_administration") or "",
                 "dosage_form":             r.get("dosage_form") or "",
+                "indication_text":         r.get("indication_text") or "",
+                "approval_date":           _safe(r.get("approval_date")),
+                "patent_expiry":           _safe(r.get("patent_expiry")),
+                "sales_year":              r.get("sales_year"),
+                "total_sale":              float(r.get("total_sale")) if r.get("total_sale") else None,
                 "opportunity_type":        opp_label,
                 "regulatory_pathway":      reg_path,
                 "opportunity_score":       r.get("opportunity_score") or 50,
@@ -621,7 +678,11 @@ def get_drug_profile(candidate_id: int):
                 ISNULL(dd.DevelopmentApprovalPath, '')           AS regulatory_pathway,
                 roa.RouteOfAdminName                             AS route_of_administration_original,
                 df.DosageFormName                                AS dosage_form_original,
-                ISNULL(dd.DevelopmentRouteOfAdmin, roa.RouteOfAdminName)  AS route_of_administration_new,
+                (SELECT TOP 1 roa2.RouteOfAdminName
+                FROM DrugDevelopmentRouteOfAdmin ddroa2
+                INNER JOIN RouteOfAdmin roa2 ON roa2.Id = ddroa2.RouteOfAdminId
+                WHERE ddroa2.DrugDevelopmentId = dd.Id
+                ORDER BY ddroa2.Id ASC)                                     AS route_of_administration,
                 ISNULL(dd.DevelopmentDosageForm,  df.DosageFormName)      AS dosage_form_new,
                 ISNULL(dd.DevelopmentStage, '')                  AS stage_of_development,
                 d.ATC                                            AS atc_code
@@ -677,7 +738,7 @@ def get_drug_profile(candidate_id: int):
             "stage_of_development":            profile.get("stage_of_development") or "",
             "atc_code":                        profile.get("atc_code") or "",
             "route_of_administration_original": profile.get("route_of_administration_original") or "",
-            "route_of_administration_new":      profile.get("route_of_administration_new") or "",
+            "route_of_administration_new": profile.get("route_of_administration") or "",
             "dosage_form_original":            profile.get("dosage_form_original") or "",
             "dosage_form_new":                 profile.get("dosage_form_new") or "",
             "ip_and_commercials": {
