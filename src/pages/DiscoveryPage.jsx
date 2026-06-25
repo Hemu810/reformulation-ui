@@ -26,7 +26,7 @@ function TypeaheadInput({ value, onChange, onSelect, endpoint, placeholder, styl
 
     fetch(`${endpoint}?q=${encodeURIComponent(q)}`, { signal: abortRef.current.signal })
       .then(r => r.json())
-      .then(d => { const list = d.suggestions || []; setSuggestions(list); setOpen(list.length > 0); })
+      .then(d => { const list = d.suggestions || []; setSuggestions(list); setOpen(true); })
       .catch(() => {});
   }, [endpoint]);
 
@@ -36,7 +36,7 @@ function TypeaheadInput({ value, onChange, onSelect, endpoint, placeholder, styl
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  const dropdown = open && suggestions.length > 0 && ReactDOM.createPortal(
+  const dropdown = open && ReactDOM.createPortal(
     <ul onMouseDown={e => e.preventDefault()} style={{
       position: "absolute", top: dropPos.top, left: dropPos.left, width: dropPos.width,
       zIndex: 99999, background: "#fff", border: "1px solid #d1d5db",
@@ -44,7 +44,7 @@ function TypeaheadInput({ value, onChange, onSelect, endpoint, placeholder, styl
       listStyle: "none", boxShadow: "0 6px 20px rgba(0,0,0,0.13)",
       maxHeight: 220, overflowY: "auto",
     }}>
-      {suggestions.map((s, i) => (
+      {suggestions.length > 0 ? suggestions.map((s, i) => (
         <li key={i}
           onMouseDown={() => { onSelect(s); setSuggestions([]); setOpen(false); }}
           style={{
@@ -55,7 +55,17 @@ function TypeaheadInput({ value, onChange, onSelect, endpoint, placeholder, styl
           onMouseEnter={e => e.currentTarget.style.background = "#f0f4ff"}
           onMouseLeave={e => e.currentTarget.style.background = "#fff"}
         >{s}</li>
-      ))}
+      )) : (
+        <li style={{
+          padding: "8px 12px",
+          fontSize: 13,
+          color: "var(--text-faint)",
+          fontFamily: "var(--font-mono)",
+          cursor: "default",
+        }}>
+          No results found
+        </li>
+      )}
     </ul>,
     document.body
   );
