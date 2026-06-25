@@ -73,57 +73,82 @@ export default function CandidatesPage({ candidates, activeFilters = {}, onSelec
             <div className="empty-state">
               <div className="empty-icon">🔬</div>
               <div className="empty-title">No candidates found</div>
-              <div className="empty-desc">No molecules matched your filter criteria. Adjust the ROA or dosage form and try again.</div>
+              <div className="empty-desc">No molecules matched your filter criteria. Adjust the filters and try again.</div>
               <button className="btn btn-secondary btn-sm" onClick={onBack} style={{ marginTop: 12 }}>← Modify Filters</button>
             </div>
           ) : (
-            <div className="data-table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Research Code</th>
-                    <th>Generic Name</th>
-                    <th>Brand</th>
-                    <th>ROA</th>
-                    <th>Form</th>
-                    <th>505(b)(2)</th>
-                    <th>FTF ANDA</th>
-                    <th>Rare/Unmet</th>
-                    <th>Opp. Score</th>
-                    <th></th>
+          <div className="data-table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>S.No</th>
+                  <th>Company</th>
+                  <th>Drug Name</th>
+                  <th>Brand</th>
+                  <th>ROA</th>
+                  <th>Dosage Form</th>
+                  <th>Indication</th>
+                  <th>Approval Date</th>
+                  <th>Patent Expiry</th>
+                  <th>Year / Sales</th>
+                  <th>Litigation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((c, idx) => (
+                  <tr
+                    key={c.candidate_id}
+                    onClick={() => !loadingCandidateId && onSelectDrug(c.candidate_id)}
+                    style={{
+                      cursor: loadingCandidateId ? "wait" : "pointer",
+                      transition: "background 120ms",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "var(--bg-surface)"}
+                    onMouseLeave={e => e.currentTarget.style.background = ""}
+                  >
+                    <td className="td-muted" style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>
+                      {String(idx + 1).padStart(2, "0")}
+                    </td>
+                    <td className="td-muted">{c.company_name || "—"}</td>
+                    <td className="td-primary">{c.drug_name || c.generic_name}</td>
+                    <td className="td-muted">{c.brand_name || "—"}</td>
+                    <td><span className="badge badge-no">{c.route_of_administration || "—"}</span></td>
+                    <td><span className="badge badge-no">{c.dosage_form || "—"}</span></td>
+                    <td
+                      className="td-muted"
+                      title={c.indication_text}
+                      style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                    >
+                      {c.indication_text || "—"}
+                    </td>
+                    <td className="td-muted">
+                      {c.approval_date ? c.approval_date.split("T")[0] : "—"}
+                    </td>
+                    <td className="td-muted">
+                      {c.patent_expiry ? c.patent_expiry.split("T")[0] : "—"}
+                    </td>
+                    <td className="td-muted">
+                      {c.sales_year && c.total_sale != null
+                        ? `${c.sales_year} / $${Number(c.total_sale).toLocaleString()}M`
+                        : "—"}
+                    </td>
+                    <td><span className="badge badge-no">—</span></td>
+                    <td onClick={e => e.stopPropagation()}>
+                      <button
+                        className="btn btn-navy btn-sm"
+                        onClick={() => onSelectDrug(c.candidate_id)}
+                        disabled={loadingCandidateId !== null}
+                      >
+                        {loadingCandidateId === c.candidate_id
+                          ? <div className="spinner" style={{ width: 10, height: 10 }} />
+                          : "Profile →"}
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {sorted.map((c, idx) => (
-                    <tr key={c.candidate_id}>
-                      <td className="td-muted" style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>{String(idx + 1).padStart(2, "0")}</td>
-                      <td className="td-code">{c.research_code}</td>
-                      <td className="td-primary">{c.generic_name}</td>
-                      <td className="td-muted">{c.brand_name}</td>
-                      <td><span className="badge badge-no">{c.route_of_administration}</span></td>
-                      <td><span className="badge badge-no">{c.dosage_form}</span></td>
-                      <td><span className={`badge ${c.opportunity_flags?.["505b2_reformulation_candidate"] ? "badge-yes" : "badge-no"}`}>{c.opportunity_flags?.["505b2_reformulation_candidate"] ? "Yes" : "No"}</span></td>
-                      <td><span className={`badge ${c.opportunity_flags?.["anda_first_to_file_candidate"] ? "badge-blue" : "badge-no"}`}>{c.opportunity_flags?.["anda_first_to_file_candidate"] ? "Yes" : "No"}</span></td>
-                      <td><span className={`badge ${c.opportunity_flags?.rare_disease_focus ? "badge-amber" : "badge-no"}`}>{c.opportunity_flags?.rare_disease_focus ? "Yes" : "No"}</span></td>
-                      <td>
-                        {c.opportunity_score ? (
-                          <div className="score-chip">
-                            <div className="score-bar"><div className="score-fill" style={{ width: `${c.opportunity_score}%` }} /></div>
-                            <span className="score-num">{c.opportunity_score}</span>
-                          </div>
-                        ) : <span className="td-muted">—</span>}
-                      </td>
-                      <td>
-                        <button className="btn btn-navy btn-sm" onClick={() => onSelectDrug(c.candidate_id)} disabled={loadingCandidateId !== null}>
-                          {loadingCandidateId === c.candidate_id ? <div className="spinner" style={{ width: 10, height: 10 }} /> : "Profile →"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+                      </div>
           )}
         </div>
       </div>
