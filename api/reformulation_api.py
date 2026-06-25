@@ -325,62 +325,70 @@ def get_analytics():
         MS = "DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)"   # first day of current month
 
         cursor.execute(f"""
-            SELECT
-                -- ── primary metrics ──────────────────────────────────────────────
-                (SELECT COUNT(DISTINCT Id)
-                 FROM Drug WHERE StageofDevelopmentId = 18 AND DrugTypeId = 2)                      AS molecules_tracked,
+    SELECT
+        -- ── primary metrics (exclude current month) ──────────────────────
+        (SELECT COUNT(DISTINCT Id)
+         FROM Drug 
+         WHERE StageofDevelopmentId = 18 
+           AND DrugTypeId = 2
+           AND AddedDate < {MS})                                            AS molecules_tracked,
 
-                (SELECT COUNT(DISTINCT dd.DrugId)
-                 FROM DrugDevelopment dd
-                 JOIN Drug d ON d.Id = dd.DrugId
-                 WHERE dd.DevelopmentApprovalPath LIKE '%505%'
-                   AND d.StageOfDevelopmentId = 18)                                    AS eligible_505b2,
+        (SELECT COUNT(DISTINCT dd.DrugId)
+         FROM DrugDevelopment dd
+         JOIN Drug d ON d.Id = dd.DrugId
+         WHERE dd.DevelopmentApprovalPath LIKE '%505%'
+           AND d.StageOfDevelopmentId = 18
+           AND d.AddedDate < {MS})                                          AS eligible_505b2,
 
-                -- Para IV ANDA proxy: active US patents for approved/commercialized drugs
-                (SELECT COUNT(DISTINCT de.DrugId)
-                 FROM DrugExpiry de
-                 JOIN Drug d2 ON d2.Id = de.DrugId
-                 WHERE de.CountryId = 231
-                   AND de.PatentExpiry > GETDATE()
-                   AND d2.StageOfDevelopmentId = 18)                                   AS ftf_anda,
+        (SELECT COUNT(DISTINCT de.DrugId)
+         FROM DrugExpiry de
+         JOIN Drug d2 ON d2.Id = de.DrugId
+         WHERE de.CountryId = 231
+           AND de.PatentExpiry > GETDATE()
+           AND d2.StageOfDevelopmentId = 18
+           AND d2.AddedDate < {MS})                                         AS ftf_anda,
 
-                (SELECT COUNT(DISTINCT rd.DrugId)
-                 FROM DrugReviewDesignation rd
-                 JOIN ReviewDesignation rdesig ON rdesig.Id = rd.ReviewDesignationId
-                 JOIN Drug d ON d.Id = rd.DrugId
-                 WHERE rdesig.ReviewDesignationName LIKE '%Orphan%'
-                   AND d.StageOfDevelopmentId = 18)                                    AS rare_disease,
+        (SELECT COUNT(DISTINCT rd.DrugId)
+         FROM DrugReviewDesignation rd
+         JOIN ReviewDesignation rdesig ON rdesig.Id = rd.ReviewDesignationId
+         JOIN Drug d ON d.Id = rd.DrugId
+         WHERE rdesig.ReviewDesignationName LIKE '%Orphan%'
+           AND d.StageOfDevelopmentId = 18
+           AND d.AddedDate < {MS})                                          AS rare_disease,
 
-                (SELECT CAST(AVG(CAST(NoveltyScore AS FLOAT)) AS DECIMAL(5,1))
-                 FROM Drug WHERE StageOfDevelopmentId = 18 AND NoveltyScore IS NOT NULL) AS avg_opp_score,
+        (SELECT CAST(AVG(CAST(NoveltyScore AS FLOAT)) AS DECIMAL(5,1))
+         FROM Drug 
+         WHERE StageOfDevelopmentId = 18 
+           AND NoveltyScore IS NOT NULL
+           AND AddedDate < {MS})                                            AS avg_opp_score,
 
-                -- ── month-to-date growth badges ──────────────────────────────────
-                -- molecules: same strict filter as primary metric
-                (SELECT COUNT(DISTINCT Id)
-                 FROM Drug
-                 WHERE StageOfDevelopmentId = 18 AND DrugTypeId = 2
-                   AND AddedDate >= {MS})                                              AS molecules_growth,
+        -- ── month-to-date growth badges (current month only) ─────────────
+        (SELECT COUNT(DISTINCT Id)
+         FROM Drug
+         WHERE StageOfDevelopmentId = 18 
+           AND DrugTypeId = 2
+           AND AddedDate >= {MS})                                           AS molecules_growth,
 
-                (SELECT COUNT(DISTINCT dd.DrugId)
-                 FROM DrugDevelopment dd
-                 JOIN Drug d ON d.Id = dd.DrugId
-                 WHERE dd.DevelopmentApprovalPath LIKE '%505%'
-                   AND d.AddedDate >= {MS})                                            AS eligible_505b2_growth,
+        (SELECT COUNT(DISTINCT dd.DrugId)
+         FROM DrugDevelopment dd
+         JOIN Drug d ON d.Id = dd.DrugId
+         WHERE dd.DevelopmentApprovalPath LIKE '%505%'
+           AND d.AddedDate >= {MS})                                         AS eligible_505b2_growth,
 
-                (SELECT COUNT(DISTINCT de.DrugId)
-                 FROM DrugExpiry de
-                 JOIN Drug d2 ON d2.Id = de.DrugId
-                 WHERE de.CountryId = 231
-                   AND de.PatentExpiry > GETDATE()
-                   AND d2.AddedDate >= {MS})                                           AS ftf_anda_growth,
+        (SELECT COUNT(DISTINCT de.DrugId)
+         FROM DrugExpiry de
+         JOIN Drug d2 ON d2.Id = de.DrugId
+         WHERE de.CountryId = 231
+           AND de.PatentExpiry > GETDATE()
+           AND d2.AddedDate >= {MS})                                        AS ftf_anda_growth,
 
-                (SELECT COUNT(DISTINCT rd.DrugId)
-                 FROM DrugReviewDesignation rd
-                 JOIN ReviewDesignation rdesig ON rdesig.Id = rd.ReviewDesignationId
-                 JOIN Drug d3 ON d3.Id = rd.DrugId
-                 WHERE rdesig.ReviewDesignationName LIKE '%Orphan%'
-                   AND d3.AddedDate >= {MS})                                           AS rare_disease_growth
-        """)
+        (SELECT COUNT(DISTINCT rd.DrugId)
+         FROM DrugReviewDesignation rd
+         JOIN ReviewDesignation rdesig ON rdesig.Id = rd.ReviewDesignationId
+         JOIN Drug d3 ON d3.Id = rd.DrugId
+         WHERE rdesig.ReviewDesignationName LIKE '%Orphan%'
+           AND d3.AddedDate >= {MS})                                        AS rare_disease_growth
+""")
         row = cursor.fetchone()
         cursor.close()
         conn.close()
