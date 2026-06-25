@@ -120,32 +120,19 @@ const OPP_TYPES = [
 
 const EMPTY_FILTERS = {
   drugName: "",
-  moleculeType: "",
   indication: "",
-  innovation: "",
   roa: "",
   dosageForm: "",
-  approvalDate: "",
+  approvalDateFrom: "",
+  approvalDateTo: "",
   litigationStatus: "",
   patentExpiryFrom: "",
   patentExpiryTo: "",
-  salesUSFrom: "",
-  salesUSTo: "",
-  salesEUFrom: "",
-  salesEUTo: "",
-  salesRowFrom: "",
-  salesRowTo: "",
-  salesGlobalFrom: "",
-  salesGlobalTo: "",
+  sales: "",
   fyYear: "",
 };
 
-const SALES_REGIONS = [
-  { label: "United States", fromKey: "salesUSFrom", toKey: "salesUSTo" },
-  { label: "Europe", fromKey: "salesEUFrom", toKey: "salesEUTo" },
-  { label: "RoW", fromKey: "salesRowFrom", toKey: "salesRowTo" },
-  { label: "Global", fromKey: "salesGlobalFrom", toKey: "salesGlobalTo" },
-];
+
 
 const LITIGATION_OPTIONS = ["Yes", "No"];
 
@@ -190,27 +177,77 @@ const sectionHeadStyle = {
 };
 
 export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
-  const [innovationOptions, setInnovationOptions] = useState([]);
   const [selectedType, setSelectedType] = useState("reformulation");
   const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [salesRegion, setSalesRegion] = useState("");
   const [analyticsData, setAnalyticsData] = useState(null);
+  const [fyYears, setFyYears] = useState([]);
+  const [salesRange, setSalesRange] = useState({ minSale: 0, maxSale: 0 });
+  const [patentRange, setPatentRange] = useState({ minExpiry: null, maxExpiry: null });
 
   useEffect(() => {
-    fetch(`${BASE}/api/options`)
-      .then((r) => r.json())
-      .then((d) => {
-        setInnovationOptions(d.innovationOptions || []);
-      })
-      .catch(console.error);
-
     fetch(`${BASE}/api/analytics`)
-      .then((r) => r.json())
-      .then((d) => setAnalyticsData(d))
-      .catch(console.error);
-  }, []);
+        .then(r => r.json())
+        .then(d => setAnalyticsData(d))
+        .catch(console.error);
 
-  const set = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }));
+    // ADD THESE:
+    fetch(`${BASE}/api/autocomplete/fyear`)
+        .then(r => r.json())
+        .then(d => setFyYears(d.years || []))
+        .catch(console.error);
+
+    fetch(`${BASE}/api/autocomplete/sales`)
+        .then(r => r.json())
+        .then(d => setSalesRange(d))
+        .catch(console.error);
+
+    fetch(`${BASE}/api/autocomplete/patentexpiry`)
+        .then(r => r.json())
+        .then(d => setPatentRange(d))
+        .catch(console.error);
+}, []);
+
+  const activeFilterKey = Object.keys(filters).find(k => filters[k] !== "");
+
+
+const PAIR_GROUPS = {
+  approvalDateFrom: "approvalDate",
+  approvalDateTo:   "approvalDate",
+  patentExpiryFrom: "patentExpiry",
+  patentExpiryTo:   "patentExpiry",
+  fyYear:           "sales",
+  sales:          "sales",
+};
+
+const activeGroup = activeFilterKey
+  ? (PAIR_GROUPS[activeFilterKey] || activeFilterKey)
+  : null;
+
+const isLocked = (key) => {
+  if (!activeGroup) return false;
+  const keyGroup = PAIR_GROUPS[key] || key;
+  return keyGroup !== activeGroup;
+};
+const set = (key) => (e) => {
+  const val = e.target.value;
+
+  if (val === "") {
+    // If clearing a paired field, only clear that field
+    // If the other field in the pair is also empty, reset everything
+    const newFilters = { ...filters, [key]: "" };
+    const anyValue = Object.keys(newFilters).find(k => newFilters[k] !== "");
+    setFilters(anyValue ? newFilters : EMPTY_FILTERS);
+  } else {
+    // Preserve all fields in the same group, clear everything else
+    const keyGroup = PAIR_GROUPS[key] || key;
+    const preserved = Object.keys(filters).reduce((acc, k) => {
+      const kGroup = PAIR_GROUPS[k] || k;
+      acc[k] = kGroup === keyGroup ? filters[k] : "";
+      return acc;
+    }, {});
+    setFilters({ ...preserved, [key]: val });
+  }
+};
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -339,6 +376,7 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
                 {OPP_TYPES.map((t) => {
                   const active = selectedType === t.id;
+                  const dimmed = selectedType && !active;
                   return (
                     <button
                       key={t.id}
@@ -350,13 +388,15 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                         alignItems: "flex-start",
                         gap: 5,
                         padding: "12px 12px 10px",
-                        background: active ? `var(${t.bgVar})` : "var(--bg-white)",
-                        border: `1.5px solid ${active ? `var(${t.borderVar})` : "var(--slate-line)"}`,
-                        borderRadius: "var(--radius-md)",
+                        background: active ? `var(${t.accentVar})` : "var(--bg-white)",
+                        border: `1.5px solid ${active ? `var(${t.accentVar})` : "var(--slate-line)"}`,
+                        boxShadow: active ? "0 4px 14px rgba(0,0,0,0.18)" : "none",
+                        opacity: dimmed ? 0.45 : 1,
+                        filter: dimmed ? "saturate(0.6)" : "none",
                         cursor: "pointer",
                         textAlign: "left",
                         transition: "all 150ms ease",
-                        boxShadow: active ? "0 0 0 2px rgba(0,122,94,0.08)" : "none",
+                        
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
@@ -364,7 +404,7 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                           fontFamily: "var(--font-mono)",
                           fontSize: 9,
                           fontWeight: 700,
-                          color: active ? `var(${t.accentVar})` : "var(--text-faint)",
+                          color: active ? "#fff" : "var(--text-faint)",
                           letterSpacing: "0.8px",
                         }}>
                           {t.number}
@@ -375,7 +415,7 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                         fontFamily: "var(--font-sans)",
                         fontWeight: 700,
                         fontSize: 12,
-                        color: active ? `var(${t.accentVar})` : "var(--text-primary)",
+                        color: active ? "#fff" : "var(--text-primary)",
                         letterSpacing: "-0.2px",
                       }}>
                         {t.label}
@@ -386,14 +426,14 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                         fontWeight: 600,
                         padding: "2px 6px",
                         borderRadius: "var(--radius-xs)",
-                        background: active ? `var(${t.borderVar})` : "var(--bg-panel)",
-                        color: active ? `var(${t.accentVar})` : "var(--text-faint)",
+                        background: active ? "rgba(255,255,255,0.2)" : "var(--bg-panel)",
+                        color: active ? "#fff" : "var(--text-faint)",
                       }}>
                         {t.badge}
                       </div>
                       <div style={{
                         fontSize: 10.5,
-                        color: active ? "var(--text-body)" : "var(--text-faint)",
+                        color: active ? "rgba(255,255,255,0.85)" : "var(--text-faint)",
                         lineHeight: 1.4,
                         marginTop: 2,
                       }}>
@@ -432,148 +472,154 @@ export default function DiscoveryPage({ onFilter, isLoading, stepProps }) {
                 padding: "14px 16px",
                 marginTop: 4,
               }}>
-                <div style={sectionHeadStyle}>Filters <span style={{ fontWeight: 400, letterSpacing: 0 }}>(all optional)</span></div>
+                <div style={sectionHeadStyle}>
+                  Filters <span style={{ fontWeight: 400, letterSpacing: 0 }}>(all optional)</span>
+                </div>
 
-                {/* Row 1: Drug Name | Molecule Type | Indication */}
+                {/* Row 1: Drug Name | Indication | Route of Administration */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
                   <div style={fieldStyle}>
                     <label style={labelStyle}>Drug Name</label>
                     <TypeaheadInput
-                      style={inputStyle}
+                      style={{ ...inputStyle, opacity: isLocked("drugName") ? 0.35 : 1, pointerEvents: isLocked("drugName") ? "none" : "auto", transition: "opacity 120ms" }}
                       placeholder="Generic, brand or research code"
                       value={filters.drugName}
                       onChange={set("drugName")}
-                      onSelect={(s) => setFilters(f => ({ ...f, drugName: s }))}
-                      endpoint={`${BASE}/api/autocomplete/drug`} 
-                    />
-                  </div>
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>Molecule Type</label>
-                    <TypeaheadInput
-                      style={inputStyle}
-                      placeholder="e.g. Biologic, Small Molecule"
-                      value={filters.moleculeType}
-                      onChange={set("moleculeType")}
-                      onSelect={(s) => setFilters(f => ({ ...f, moleculeType: s }))}
-                      endpoint={`${BASE}/api/autocomplete/moleculetype`}
+                      onSelect={(s) => { if (!isLocked("drugName")) setFilters({ ...EMPTY_FILTERS, drugName: s }); }}
+                      endpoint={`${BASE}/api/autocomplete/drug`}
                     />
                   </div>
                   <div style={fieldStyle}>
                     <label style={labelStyle}>Indication</label>
                     <TypeaheadInput
-                      style={inputStyle}
+                      style={{ ...inputStyle, opacity: isLocked("indication") ? 0.35 : 1, pointerEvents: isLocked("indication") ? "none" : "auto", transition: "opacity 120ms" }}
                       placeholder="e.g. Type 2 Diabetes"
                       value={filters.indication}
                       onChange={set("indication")}
-                      onSelect={(s) => setFilters(f => ({ ...f, indication: s }))}
+                      onSelect={(s) => { if (!isLocked("indication")) setFilters({ ...EMPTY_FILTERS, indication: s }); }}
                       endpoint={`${BASE}/api/autocomplete/indication`}
                     />
-                  </div>
-                </div>
-
-                {/* Row 2: Innovation | Route of Administration | Dosage Form */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>Innovation</label>
-                    <select style={inputStyle} value={filters.innovation} onChange={set("innovation")}>
-                      <option value="">NME &amp; Non-NME</option>
-                      {innovationOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
                   </div>
                   <div style={fieldStyle}>
                     <label style={labelStyle}>Route of Administration</label>
                     <TypeaheadInput
-                      style={inputStyle}
+                      style={{ ...inputStyle, opacity: isLocked("roa") ? 0.35 : 1, pointerEvents: isLocked("roa") ? "none" : "auto", transition: "opacity 120ms" }}
                       placeholder="e.g. Oral, Intravenous"
                       value={filters.roa}
                       onChange={set("roa")}
-                      onSelect={(s) => setFilters(f => ({ ...f, roa: s }))}
+                      onSelect={(s) => { if (!isLocked("roa")) setFilters({ ...EMPTY_FILTERS, roa: s }); }}
                       endpoint={`${BASE}/api/autocomplete/roa`}
-                    />
-                  </div>
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>Dosage Form</label>
-                    <TypeaheadInput
-                      style={inputStyle}
-                      placeholder="e.g. Tablet, Capsule"
-                      value={filters.dosageForm}
-                      onChange={set("dosageForm")}
-                      onSelect={(s) => setFilters(f => ({ ...f, dosageForm: s }))}
-                      endpoint={`${BASE}/api/autocomplete/dosageform`}
                     />
                   </div>
                 </div>
 
-                {/* Row 3: Approval Date | Litigation Status */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                {/* Row 2: Dosage Form */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Approval Date</label>
-                    <input type="date" style={inputStyle} value={filters.approvalDate} onChange={set("approvalDate")} />
+                    <label style={labelStyle}>Dosage Form</label>
+                    <TypeaheadInput
+                      style={{ ...inputStyle, opacity: isLocked("dosageForm") ? 0.35 : 1, pointerEvents: isLocked("dosageForm") ? "none" : "auto", transition: "opacity 120ms" }}
+                      placeholder="e.g. Tablet, Capsule"
+                      value={filters.dosageForm}
+                      onChange={set("dosageForm")}
+                      onSelect={(s) => { if (!isLocked("dosageForm")) setFilters({ ...EMPTY_FILTERS, dosageForm: s }); }}
+                      endpoint={`${BASE}/api/autocomplete/dosageform`}
+                    />
                   </div>
                   <div style={fieldStyle}>
                     <label style={labelStyle}>Litigation Status</label>
-                    <select style={inputStyle} value={filters.litigationStatus} onChange={set("litigationStatus")}>
+                    <select
+                      style={{ ...inputStyle, opacity: isLocked("litigationStatus") ? 0.35 : 1, transition: "opacity 120ms" }}
+                      disabled={isLocked("litigationStatus")}
+                      value={filters.litigationStatus}
+                      onChange={set("litigationStatus")}
+                    >
                       <option value="">Yes &amp; No</option>
                       {LITIGATION_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                 </div>
 
-                {/* Row 4: Patent Expiry From | To */}
+                {/* Row 3: Approval Date From | Approval Date To | Litigation Status */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
                   <div style={fieldStyle}>
-                    <label style={labelStyle}>Patent Expiry From</label>
-                    <input type="date" style={inputStyle} value={filters.patentExpiryFrom} onChange={set("patentExpiryFrom")} />
-                  </div>
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>Patent Expiry To</label>
-                    <input type="date" style={inputStyle} value={filters.patentExpiryTo} onChange={set("patentExpiryTo")} />
-                  </div>
-                </div>
-
-                {/* Row 5: Sales Country | FY Year | From | To */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 1fr 1fr", gap: 10, alignItems: "end" }}>
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>Sales Country</label>
-                    <select style={inputStyle} value={salesRegion} onChange={(e) => setSalesRegion(e.target.value)}>
-                      <option value="">Select region</option>
-                      {SALES_REGIONS.map((r) => <option key={r.label} value={r.label}>{r.label}</option>)}
-                    </select>
-                  </div>
-                  <div style={fieldStyle}>
-                    <label style={labelStyle}>FY Year</label>
+                    <label style={labelStyle}>Approval Date From</label>
                     <input
-                      type="number"
-                      style={inputStyle}
-                      placeholder="2024"
-                      min={2000}
-                      max={2035}
-                      value={filters.fyYear}
-                      onChange={set("fyYear")}
+                      type="date"
+                      style={{ ...inputStyle, opacity: isLocked("approvalDateFrom") ? 0.35 : 1, transition: "opacity 120ms" }}
+                      disabled={isLocked("approvalDateFrom")}
+                      value={filters.approvalDateFrom}
+                      onChange={set("approvalDateFrom")}
                     />
                   </div>
-                  {(() => {
-                    const row = SALES_REGIONS.find((r) => r.label === salesRegion);
-                    return row ? (
-                      <>
-                        <div style={fieldStyle}>
-                          <label style={labelStyle}>From $M</label>
-                          <input type="number" style={inputStyle} placeholder="0" min={0} value={filters[row.fromKey]} onChange={set(row.fromKey)} />
-                        </div>
-                        <div style={fieldStyle}>
-                          <label style={labelStyle}>To $M</label>
-                          <input type="number" style={inputStyle} placeholder="100,000" min={0} max={100000} value={filters[row.toKey]} onChange={set(row.toKey)} />
-                        </div>
-                      </>
-                    ) : (
-                      <div style={{ gridColumn: "span 2", display: "flex", alignItems: "center", paddingBottom: 4 }}>
-                        <span style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>← select a region to enter sales range</span>
-                      </div>
-                    );
-                  })()}
+                  <div style={fieldStyle}>
+                    <label style={labelStyle}>Approval Date To</label>
+                    <input
+                      type="date"
+                      style={{ ...inputStyle, opacity: isLocked("approvalDateTo") ? 0.35 : 1, transition: "opacity 120ms" }}
+                      disabled={isLocked("approvalDateTo")}
+                      value={filters.approvalDateTo}
+                      onChange={set("approvalDateTo")}
+                    />
+                  
+                  </div>
+                </div>
+
+                {/* Row 4: Patent Expiry From | Patent Expiry To */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                <div style={fieldStyle}>
+                <label style={labelStyle}>Patent Expiry From</label>
+                <input
+                  type="date"
+                  style={{ ...inputStyle, opacity: isLocked("patentExpiryFrom") ? 0.35 : 1, transition: "opacity 120ms" }}
+                  disabled={isLocked("patentExpiryFrom")}
+                  min={patentRange.minExpiry ? patentRange.minExpiry.split("T")[0] : ""}
+                  max={patentRange.maxExpiry ? patentRange.maxExpiry.split("T")[0] : ""}
+                  value={filters.patentExpiryFrom}
+                  onChange={set("patentExpiryFrom")}
+                />
+                  </div>
+                  <div style={fieldStyle}>
+                  <label style={labelStyle}>Patent Expiry To</label>
+                  <input
+                    type="date"
+                    style={{ ...inputStyle, opacity: isLocked("patentExpiryTo") ? 0.35 : 1, transition: "opacity 120ms" }}
+                    disabled={isLocked("patentExpiryTo")}
+                    min={patentRange.minExpiry ? patentRange.minExpiry.split("T")[0] : ""}
+                    max={patentRange.maxExpiry ? patentRange.maxExpiry.split("T")[0] : ""}
+                    value={filters.patentExpiryTo}
+                    onChange={set("patentExpiryTo")}
+                  />
+                  </div>
+                </div>
+
+                {/* Row 5: FY Year | Sales */}
+                <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 1fr", gap: 10 }}>
+                <div style={fieldStyle}>
+                <label style={labelStyle}>FY Year</label>
+                <select
+                  style={{ ...inputStyle, opacity: isLocked("fyYear") ? 0.35 : 1, transition: "opacity 120ms" }}
+                  disabled={isLocked("fyYear")}
+                  value={filters.fyYear}
+                  onChange={set("fyYear")}
+                >
+                  <option value="">All Years</option>
+                  {fyYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              <div style={fieldStyle}>
+              <label style={labelStyle}>Sales($, in Millions)</label>
+              <input
+                type="number"
+                style={{ ...inputStyle, opacity: isLocked("sales") ? 0.35 : 1, transition: "opacity 120ms" }}
+                disabled={isLocked("sales")}
+                placeholder={salesRange.maxSale ? `Up to ${Number(salesRange.maxSale).toLocaleString()}` : "e.g. 100,000"}
+                value={filters.sales}
+                onChange={set("sales")}
+              />
+            </div>
                 </div>
               </div>
-
               <button
                 type="submit"
                 className="btn btn-primary btn-lg"
